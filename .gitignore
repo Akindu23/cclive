@@ -1,0 +1,52 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Secrets - the TypeSafe key must never be committed
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs and temp
+*.log
+logs/
+tmp/
+*.tmp
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Node (if the core lands in TypeScript)
+node_modules/
+dist/
+build/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# Python (if the core lands in Python)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local agent state
+.claude/settings.local.json
+.cursor/mcp.local.json
+
+# Wayfinder scratch
+work/
+docs/
