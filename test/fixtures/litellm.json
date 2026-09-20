@@ -1,0 +1,37 @@
+{
+  "claude-opus-5": {
+    "input_cost_per_token": 0.000005, "output_cost_per_token": 0.000025,
+    "cache_read_input_token_cost": 5e-7, "cache_creation_input_token_cost": 0.00000625, "cache_creation_input_token_cost_above_1hr": 0.00001,
+    "litellm_provider": "anthropic", "mode": "chat", "max_input_tokens": 1000000,
+    "provider_specific_entry": { "us": 1.1, "fast": 2 }, "supports_fast_mode": true,
+    "source": "https://platform.claude.com/docs/en/about-claude/pricing"
+  },
+  "claude-fable-5-1": {
+    "input_cost_per_token": 0.00001, "output_cost_per_token": 0.00005,
+    "cache_read_input_token_cost": 2.5e-7, "cache_creation_input_token_cost": 0.0000125, "cache_creation_input_token_cost_above_1hr": 0.00002,
+    "litellm_provider": "anthropic", "mode": "chat", "provider_specific_entry": { "us": 1.1 }
+  },
+  "claude-sonnet-5": {
+    "input_cost_per_token": 1.9999999999999998e-6, "output_cost_per_token": 0.00001,
+    "cache_read_input_token_cost": 2e-7, "cache_creation_input_token_cost": 0.0000025,
+    "input_cost_per_token_above_200k_tokens": 0.004, "output_cost_per_token_above_200k_tokens": 0.02,
+    "cache_read_input_token_cost_above_200k_tokens": 0.0004, "cache_creation_input_token_cost_above_200k_tokens": 0.005,
+    "cache_creation_input_token_cost_above_1hr_above_200k_tokens": 0.008,
+    "litellm_provider": "anthropic", "mode": "chat", "max_input_tokens": 1000000
+  },
+  "claude-nova-9": {
+    "input_cost_per_token": 0.000001, "output_cost_per_token": 0.000002,
+    "cache_read_input_token_cost": 1e-7, "cache_creation_input_token_cost": 0.00000125,
+    "litellm_provider": "anthropic", "mode": "chat"
+  },
+  "claude-opus-5-vertex": {
+    "input_cost_per_token": 0.000099, "output_cost_per_token": 0.000099,
+    "litellm_provider": "vertex_ai", "mode": "chat"
+  },
+  "anthropic.claude-opus-5-v1:0": {
+    "input_cost_per_token": 0.000099, "output_cost_per_token": 0.000099,
+    "litellm_provider": "bedrock", "mode": "chat"
+  },
+  "gpt-5": { "input_cost_per_token": 0.00000125, "output_cost_per_token": 0.00001, "litellm_provider": "openai", "mode": "chat" },
+  "sample_spec": { "max_tokens": "LEGACY parameter", "litellm_provider": "one of https://docs.litellm.ai/docs/providers" }
+}

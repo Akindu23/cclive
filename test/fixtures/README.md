@@ -1,0 +1,9 @@
+# Fixtures
+
+`roots/primary` and `roots/secondary` mirror the two transcript roots (`~/.claude/projects`, `~/.config/claude/projects`).
+Tests copy them to a temp dir and stamp mtimes, because git does not keep mtimes and the history window is mtime-based.
+
+- `primary/-home-dev-project-alpha/d0b3a2a9-….jsonl`: anonymised copy of a real session (28 requests, all Fable 5.1, one aborted, one synthetic error line). Produced with `node scripts/anonymize-transcript.mjs <in> <out>`, which keeps ids, timestamps, usage and record structure and replaces every piece of text.
+- `secondary/-home-dev-project-beta/beta.jsonl`: hand-written. Fast-mode Opus, a dated model id, an unpriced model, a synthetic error line, a malformed line, an unknown record type, a two-line request, an aborted request, and split 5m/1h cache writes.
+- `secondary/-home-dev-project-gamma/gamma.jsonl` + `gamma/subagents/`: hand-written two-level spawn. `agent-a1` (meta) is spawned from the main file and spawns `agent-b2` (meta); `agent-c3` has no meta file so its label comes from the Agent tool_use input; `agent-d4` is a fork subagent starting with `fork-context-ref` and has no link record in the main file, so it stays at top level until a test feeds the link. All timestamps are 2026-09-10 so `msg_cache_writes` stays the newest secondary row. No title records, so its session label falls back to the start time.
+- `secondary/-home-dev-project-delta/delta.jsonl`: hand-written compaction, record shapes copied from a real transcript. Both title kinds (custom wins) with a later repeated `ai-title`, a `compact_boundary` system record, the `isCompactSummary` user record, then a two-line request (partial then final) that carries the Compacted flag and a plain request after it that does not. Timestamps are 2026-09-12.

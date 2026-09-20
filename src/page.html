@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cclive</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--bg:#0b0b0c;--panel:#141416;--panel2:#1b1b1e;--border:#26262b;--text:#e7e7ea;--muted:#8b8b93;--dim:#5c5c66;--bad:#f87171;--font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;--mono:"SF Mono",ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 var(--font)}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 24px 96px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.muted{color:var(--muted)}.dim{color:var(--dim)}.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1{font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--border);background:transparent;color:var(--muted);padding:5px 11px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer}
+.chip:hover{color:var(--text)}.chip.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+select{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font:inherit;font-size:12px;max-width:320px}
+option.newest{color:#34d399}
+select:focus,select:focus-visible,button:focus-visible{outline:none;border-color:var(--muted);box-shadow:0 0 0 2px rgba(255,255,255,.08)}
+.ctl{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px}
+.bar{height:6px;border-radius:3px;background:var(--panel2);margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;background:#34d399}
+.bar.over i{background:var(--bad)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.tile .lbl{font-size:12px;color:var(--muted)}
+.tile .val{font-size:22px;font-weight:600;margin-top:4px;letter-spacing:-.02em}
+.tile .sub{font-size:11.5px;color:var(--dim);margin-top:2px}
+.tile .warn{color:#fbbf24}
+.tile .tok{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+.tile .tok .k{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+.tile .tok .v{font-size:12.5px;color:var(--muted);margin-top:2px}
+#chartwrap{position:relative;height:220px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{font-weight:500;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11.5px;white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid #1d1d21;white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tr.parent{cursor:pointer}tr.parent:hover td{background:#17171a}
+tr.child td{background:#10101250}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.chev{display:inline-block;width:14px;color:var(--dim);font-size:10px;transition:transform .12s}
+.chev.open{transform:rotate(90deg)}
+.src{display:inline-flex;align-items:center;gap:6px;vertical-align:middle}
+.src .kind{color:var(--muted)}
+.pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid var(--border);color:var(--text)}
+.pill i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:1px}
+.badge{display:inline-block;padding:0 6px;border-radius:4px;font-size:10.5px;margin-left:6px;background:#2a2a30;color:var(--muted);vertical-align:middle}
+.badge.aborted{background:#3b1f22;color:var(--bad)}
+.empty{padding:32px;text-align:center;color:var(--dim)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--dim);margin-right:9px;vertical-align:1px}
+.dot.live{background:#34d399;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,.55)}50%{box-shadow:0 0 0 5px rgba(52,211,153,0)}}
+#conn{font-size:11.5px;color:var(--muted);margin-left:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"><h1><span id="dot" class="dot"></span>cclive<span id="conn" hidden>reconnecting…</span></h1><span id="summary" class="muted" style="font-size:12px"></span></div>
+  <div id="budget" class="card" style="margin-top:0">
+    <div class="row"><div><span id="mtd" class="mono" style="font-size:22px;font-weight:600"></span><span id="of" class="muted"></span> <span class="muted">month to date</span></div><span id="reset" class="muted" style="font-size:12px"></span></div>
+    <div id="bar" class="bar" hidden><i></i></div>
+    <div class="dim" style="font-size:11.5px;margin-top:10px">Estimate at list price from local transcripts. Your invoice may differ. <span id="prices"></span></div>
+  </div>
+  <div class="row" style="margin:18px 0 12px">
+    <div id="chips" class="chips"></div>
+    <div class="ctl"><select id="session" title="Session filter"><option value="">All sessions</option></select> Group by <select id="groupby"><option>model</option><option>source</option><option>session</option></select> Metric <select id="metric"><option>spend</option><option>tokens</option></select></div>
+  </div>
+  <div id="tiles" class="tiles"></div>
+  <div class="card" style="margin-top:12px">
+    <div id="charttitle" class="muted" style="font-size:12px;margin-bottom:8px"></div>
+    <div id="chartwrap"><canvas id="chart"></canvas></div>
+    <div id="legend" class="legend"></div>
+  </div>
+  <div class="card" style="margin-top:12px;padding:0 0 4px">
+    <div class="row" style="padding:10px 10px 6px"><span class="muted" style="font-size:12px">Requests</span><button id="export" class="chip">Export CSV</button></div>
+    <div id="table"></div>
+  </div>
+</div>
+<script src="/chart.js"></script>
+<script>
+const MODEL_COLORS = { fable: '#c084fc', opus: '#60a5fa', sonnet: '#34d399', haiku: '#fbbf24' };
+const PALETTE = ['#c084fc', '#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#fb923c', '#a3e635', '#38bdf8'];
+const DAY = 86400e3;
+/** Chip label → id used in the CSV file name. */
+const RANGES = { '1d': '1d', '7d': '7d', '30d': '30d', 'MTD': 'mtd', 'Last month': 'lastmonth' };
+const usd = v => v < 0.01 ? '$' + v.toFixed(4) : v < 1 ? '$' + v.toFixed(3) : '$' + v.toFixed(2);
+const tok = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
+const tm = ts => new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/** "claude-fable-5-1" → {short: "Fable 5.1", color}. Date suffixes are dropped. */
+function modelInfo(id) {
+  const parts = id.replace(/^claude-/, '').replace(/-\d{8}$/, '').split('-');
+  const name = parts[0];
+  const short = name[0].toUpperCase() + name.slice(1) + (parts.length > 1 ? ' ' + parts.slice(1).join('.') : '');
+  return { short, color: MODEL_COLORS[name] || '#8b8b93' };
+}
+function modelPill(id) {
+  const { short, color } = modelInfo(id);
+  return `<span class="pill"><i style="background:${color}"></i>${esc(short)}</span>`;
+}
+
+const state = {
+  rows: new Map(), sessions: [], top: [], childrenOf: new Map(), expanded: new Set(), budget: null, priceSource: '',
+  range: '7d', session: new URLSearchParams(location.search).get('session') || null, groupBy: 'model', metric: 'spend',
+  /** Rows matching the chip and session filter, flat, newest first. */
+  visible: [],
+};
+
+/** [start, end) of the selected chip in epoch ms; MTD and Last month sit on UTC month boundaries like the budget card. */
+function rangeWindow(now = Date.now()) {
+  const d = new Date(now);
+  const monthStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+  switch (state.range) {
+    case '1d': return [now - DAY, Infinity];
+    case '7d': return [now - 7 * DAY, Infinity];
+    case '30d': return [now - 30 * DAY, Infinity];
+    case 'MTD': return [monthStart, Infinity];
+    default: return [Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1), monthStart];
+  }
+}
+
+function sessionLabel(id) {
+  const s = state.sessions.find(s => s.sessionId === id);
+  return s ? s.label : id;
+}
+
+function countSubs(row) {
+  return (state.childrenOf.get(row.messageId) || []).reduce((n, c) => n + 1 + countSubs(c), 0);
+}
+
+function badgeTitle(row, flag) {
+  if (flag !== 'compacted' || !row.compaction) return '';
+  const c = row.compaction;
+  return ` title="pre ${tok(c.preTokens)} · post ${tok(c.postTokens)} · dropped so far ${tok(c.cumulativeDroppedTokens)}"`;
+}
+
+function rowHTML(row, depth) {
+  const children = state.childrenOf.get(row.messageId) || [];
+  const open = state.expanded.has(row.messageId);
+  const subs = countSubs(row);
+  const [kind, desc] = row.sourceLabel.includes(': ') ? row.sourceLabel.split(/: (.*)/s) : [row.sourceLabel, ''];
+  const chev = `<span class="chev ${open ? 'open' : ''}">${children.length ? '▶' : ''}</span>`;
+  const src = desc
+    ? `<span class="src" style="padding-left:${depth * 18}px">${chev}<span class="kind">${esc(kind)}:</span> ${esc(desc)}</span>`
+    : `<span class="src" style="padding-left:${depth * 18}px">${chev}${esc(kind)}</span>`;
+  const badges = row.flags.map(f => `<span class="badge ${f}"${badgeTitle(row, f)}>${f}</span>`).join('')
+    + (subs ? `<span class="badge">${subs} sub</span>` : '');
+  const cache = row.cacheRead + row.cacheWrite5m + row.cacheWrite1h;
+  const tip = `${row.messageId} · ${row.requestId}${row.agentId ? ' · agent ' + row.agentId : ''}`;
+  let html = `<tr class="${children.length ? 'parent' : ''} ${depth ? 'child' : ''}" data-id="${esc(row.messageId)}" title="${esc(tip)}">`
+    + `<td class="mono dim">${tm(row.timestamp)}</td><td>${src}${badges}</td><td>${modelPill(row.model)}</td>`
+    + `<td class="num" title="not from cache · whole prompt ${tok(row.input + cache)}">${tok(row.input)}</td>`
+    + `<td class="num" title="thinking ${tok(row.thinking)}">${tok(row.output)}</td>`
+    + `<td class="num">${tok(row.cacheRead)}</td>`
+    + `<td class="num" title="5m ${tok(row.cacheWrite5m)} · 1h ${tok(row.cacheWrite1h)}">${tok(row.cacheWrite5m + row.cacheWrite1h)}</td>`
+    + `<td class="num">${usd(row.estimate)}</td></tr>`;
+  if (open) for (const c of children) html += rowHTML(c, depth + 1);
+  return html;
+}
+
+function renderChips() {
+  document.getElementById('chips').innerHTML = Object.keys(RANGES)
+    .map(k => `<button class="chip ${state.range === k ? 'on' : ''}" data-range="${k}">${k}</button>`).join('');
+}
+
+/** Newest first, green dot on the newest only; the current selection is kept across snapshot reloads. */
+function renderSessions() {
+  const sel = document.getElementById('session');
+  sel.innerHTML = '<option value="">All sessions</option>' + state.sessions
+    .map(s => `<option value="${esc(s.sessionId)}" class="${s.newest ? 'newest' : ''}">${s.newest ? '● ' : ''}${esc(s.label)}</option>`).join('');
+  sel.value = state.session || '';
+}
+
+/** Estimate and request count for the range; Main thread plus Subagents is Total. */
+function renderTiles(rows) {
+  const main = rows.filter(r => r.sourceType === 'main');
+  const subs = rows.filter(r => r.sourceType === 'subagent');
+  const unpriced = rows.filter(r => r.flags.includes('unpriced')).length;
+  const n = k => `${k} request${k === 1 ? '' : 's'}`;
+  const sum = (part, f) => part.reduce((s, r) => s + f(r), 0);
+  const cell = (k, v, title) => `<div title="${title}"><div class="k">${k}</div><div class="v mono">${tok(v)}</div></div>`;
+  const tile = (lbl, part, warn = '') =>
+    `<div class="card tile"><div class="lbl">${lbl}</div><div class="val mono">${usd(sum(part, r => r.estimate))}</div>`
+      + `<div class="sub">${n(part.length)}${warn}</div>`
+      + `<div class="tok">`
+      + cell('Input', sum(part, r => r.input), 'Input tokens not served from the prompt cache. Same as "input" in Claude Code\'s /usage.')
+      + cell('Output', sum(part, r => r.output), 'Output tokens, thinking included.')
+      + cell('Cache read', sum(part, r => r.cacheRead), 'Prompt tokens served from the cache, at a reduced price.')
+      + cell('Cache write', sum(part, r => r.cacheWrite5m + r.cacheWrite1h), 'Prompt tokens written to the cache, at a premium price.')
+      + `</div></div>`;
+  document.getElementById('tiles').innerHTML =
+    tile('Total estimate', rows, unpriced ? ` · <span class="warn">${n(unpriced)} unpriced</span>` : '')
+    + tile('Main thread', main) + tile('Subagents', subs);
+}
+
+const HOURLY = { hour: '2-digit', minute: '2-digit', hour12: false };
+const DAILY = { month: 'short', day: 'numeric' };
+function floorTo(ts, hourly) { const d = new Date(ts); hourly ? d.setMinutes(0, 0, 0) : d.setHours(0, 0, 0, 0); return d.getTime(); }
+function nextBucket(ts, hourly) { const d = new Date(ts); hourly ? d.setHours(d.getHours() + 1) : d.setDate(d.getDate() + 1); return d.getTime(); }
+
+const groupOf = {
+  model: r => modelInfo(r.model).short,
+  source: r => r.sourceType === 'main' ? 'main' : 'subagents',
+  session: r => sessionLabel(r.sessionId),
+};
+const metricOf = {
+  spend: r => r.estimate,
+  tokens: r => r.input + r.cacheRead + r.cacheWrite5m + r.cacheWrite1h + r.output,
+};
+function colorFor(key, i, sample) {
+  if (state.groupBy === 'model') return modelInfo(sample.model).color;
+  if (state.groupBy === 'source') return key === 'main' ? '#c084fc' : '#34d399';
+  return PALETTE[i % PALETTE.length];
+}
+
+let chart = null;
+/** Cumulative stacked area: hour buckets when the window spans two days or less, else day buckets, in local time. */
+function renderChart(rows) {
+  const [a, b] = rangeWindow();
+  const end = Math.min(b, Date.now());
+  const hourly = end - a <= 2 * DAY;
+  const keys = [];
+  for (let k = floorTo(a, hourly); k <= floorTo(end - 1, hourly); k = nextBucket(k, hourly)) keys.push(k);
+  const slot = new Map(keys.map((k, i) => [k, i]));
+  const group = groupOf[state.groupBy], metric = metricOf[state.metric];
+  const groups = new Map();
+  for (const r of rows) {
+    const key = group(r);
+    if (!groups.has(key)) groups.set(key, { key, sample: r, data: new Array(keys.length).fill(0) });
+    groups.get(key).data[slot.get(floorTo(r.timestamp, hourly))] += metric(r);
+  }
+  const series = [...groups.values()].map(g => {
+    let c = 0;
+    return { ...g, data: g.data.map(v => (c += v)), total: c };
+  }).sort((x, y) => y.total - x.total);
+  const fmt = state.metric === 'spend' ? usd : v => tok(Math.round(v));
+  const datasets = series.map((s, i) => {
+    const color = colorFor(s.key, i, s.sample);
+    return { label: s.key, data: s.data, borderColor: color, backgroundColor: color + 'b3', borderWidth: 1, pointRadius: 0, fill: 'stack' };
+  });
+  const labels = keys.map(k => new Date(k).toLocaleString(undefined, hourly ? { ...DAILY, ...HOURLY } : DAILY));
+  document.getElementById('charttitle').textContent = `Cumulative ${state.metric} by ${state.groupBy}`;
+  document.getElementById('legend').innerHTML = series.map((s, i) =>
+    `<span><i style="background:${colorFor(s.key, i, s.sample)}"></i>${esc(s.key)} <span class="dim">${fmt(s.total)}</span></span>`).join('')
+    || '<span class="dim">No requests in range</span>';
+  if (typeof Chart === 'undefined') return; // the bundle failed to load; the tiles and table still work
+  if (!chart) {
+    chart = new Chart(document.getElementById('chart'), {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { grid: { color: '#222226' }, ticks: { color: '#5c5c66', maxTicksLimit: 8, maxRotation: 0 } },
+          y: { stacked: true, beginAtZero: true, grid: { color: '#222226' }, ticks: { color: '#5c5c66', callback: v => fmt(v) } },
+        },
+        plugins: { tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } } },
+      },
+    });
+  } else {
+    chart.data.labels = labels;
+    chart.data.datasets = datasets;
+    chart.options.scales.y.ticks.callback = v => fmt(v);
+    chart.options.plugins.tooltip.callbacks.label = ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`;
+    chart.update('none');
+  }
+}
+
+/** ISO 8601 in local time with the offset, e.g. 2026-09-20T13:59:00+02:00. */
+function isoLocal(ts) {
+  const d = new Date(ts), p = n => String(Math.abs(n)).padStart(2, '0'), off = -d.getTimezoneOffset();
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+    + `${off < 0 ? '-' : '+'}${p(Math.trunc(off / 60))}:${p(off % 60)}`;
+}
+const csvCell = v => /[",\r\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
+
+/** The filtered table, flat (subagent rows included whether or not their chevron is open), built in the browser. */
+function exportCsv() {
+  const rows = [['Time', 'Source', 'Model', 'Input', 'Output', 'Cache read', 'Cache write', 'Cost', 'Session', 'Flags']].concat(state.visible.map(r => [
+    isoLocal(r.timestamp), r.sourceLabel, r.model, r.input, r.output, r.cacheRead, r.cacheWrite5m + r.cacheWrite1h,
+    r.estimate.toFixed(6), sessionLabel(r.sessionId), r.flags.join(' '),
+  ]));
+  const blob = new Blob([rows.map(cells => cells.map(csvCell).join(',')).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cclive-${RANGES[state.range]}-${isoLocal(Date.now()).slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function render() {
+  const body = state.top.map(r => rowHTML(r, 0)).join('') || '<tr><td colspan="8" class="empty">No requests in range</td></tr>';
+  document.getElementById('table').innerHTML = '<table><thead><tr><th>Time</th><th>Source</th><th>Model</th>'
+    + '<th class="num" title="Input tokens not served from the prompt cache. Same as &quot;input&quot; in Claude Code\'s /usage. Hover a cell for the whole prompt size.">Input</th>'
+    + '<th class="num" title="Output tokens, thinking included.">Output</th>'
+    + '<th class="num" title="Prompt tokens served from the cache, at a reduced price.">Cache read</th>'
+    + '<th class="num" title="Prompt tokens written to the cache, at a premium price.">Cache write</th><th class="num">Cost</th></tr></thead>'
+    + `<tbody>${body}</tbody></table>`;
+}
+
+/** Filter by chip and session, rebuild the nesting, redraw tiles, chart and table. yagni: full re-sort per frame over ~11k rows. */
+function index() {
+  const [a, b] = rangeWindow();
+  const rows = [...state.rows.values()]
+    .filter(r => r.timestamp >= a && r.timestamp < b && (!state.session || r.sessionId === state.session))
+    .sort((x, y) => y.timestamp - x.timestamp);
+  const ids = new Set(rows.map(r => r.messageId));
+  state.visible = rows;
+  state.top = [];
+  state.childrenOf = new Map();
+  for (const r of rows) {
+    if (r.parentMessageId === null || !ids.has(r.parentMessageId)) { state.top.push(r); continue; } // orphan subagents stay at top level
+    if (!state.childrenOf.has(r.parentMessageId)) state.childrenOf.set(r.parentMessageId, []);
+    state.childrenOf.get(r.parentMessageId).push(r);
+  }
+  document.getElementById('summary').textContent = `${state.sessions.length} sessions · ${state.rows.size} requests`;
+  renderChips();
+  renderTiles(rows);
+  renderChart(rows);
+  renderBudget();
+  render();
+}
+
+/** `rows` events and control changes coalesce into one redraw per animation frame. */
+let frame = 0;
+function schedule() {
+  frame ||= requestAnimationFrame(() => { frame = 0; index(); });
+}
+
+/** The 1st of next month at 00:00 UTC, as "1 Oct 2026". */
+function nextReset() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+/** Month to date over every row held, ignoring the chip and session filters. Runs on every redraw so live rows move the bar. */
+function renderBudget() {
+  const budget = state.budget;
+  const now = new Date();
+  const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+  let mtd = 0;
+  for (const r of state.rows.values()) if (r.timestamp >= monthStart) mtd += r.estimate;
+  document.getElementById('mtd').textContent = usd(mtd);
+  document.getElementById('of').textContent = budget ? ` of ${usd(budget)}` : '';
+  document.getElementById('reset').textContent = budget ? `Resets ${nextReset()}` : 'Set a budget with --budget';
+  const bar = document.getElementById('bar');
+  bar.hidden = !budget;
+  if (budget) {
+    bar.firstElementChild.style.width = `${Math.min(100, mtd / budget * 100)}%`;
+    bar.classList.toggle('over', mtd >= budget);
+  }
+  document.getElementById('prices').textContent = state.priceSource;
+}
+
+function load(snapshot) {
+  state.rows = new Map(snapshot.rows.map(r => [r.messageId, r]));
+  state.sessions = snapshot.sessions;
+  state.budget = snapshot.budget;
+  state.priceSource = snapshot.priceSource;
+  if (state.session && !state.sessions.some(s => s.sessionId === state.session)) setSession(null); // a bookmarked session that left the history window
+  renderSessions();
+  schedule();
+}
+
+function upsert(rows) {
+  for (const r of rows) state.rows.set(r.messageId, r);
+  schedule();
+}
+
+/** The selected session rides the URL as `?session=<id>` so a bookmark reopens the same view. */
+function setSession(id) {
+  state.session = id;
+  const url = new URL(location);
+  id ? url.searchParams.set('session', id) : url.searchParams.delete('session');
+  history.replaceState(null, '', url);
+}
+
+document.getElementById('table').addEventListener('click', e => {
+  const tr = e.target.closest('tr.parent');
+  if (!tr) return;
+  const id = tr.dataset.id;
+  state.expanded.has(id) ? state.expanded.delete(id) : state.expanded.add(id);
+  render();
+});
+document.getElementById('chips').addEventListener('click', e => {
+  const chip = e.target.closest('[data-range]');
+  if (!chip) return;
+  state.range = chip.dataset.range;
+  schedule();
+});
+document.getElementById('session').addEventListener('change', e => { setSession(e.target.value || null); schedule(); });
+document.getElementById('groupby').addEventListener('change', e => { state.groupBy = e.target.value; schedule(); });
+document.getElementById('metric').addEventListener('change', e => { state.metric = e.target.value; schedule(); });
+document.getElementById('export').addEventListener('click', exportCsv);
+
+function setLive(on) {
+  document.getElementById('dot').classList.toggle('live', on);
+  document.getElementById('conn').hidden = on;
+}
+
+/** Every hello (first connect, reconnect, server restart) refetches the snapshot; the boot token sits on the dot's tooltip. */
+function connect() {
+  const es = new EventSource('/api/events');
+  es.addEventListener('hello', e => {
+    setLive(true);
+    document.getElementById('dot').title = 'boot ' + e.data;
+    fetch('/api/snapshot').then(r => r.json()).then(load);
+  });
+  es.addEventListener('rows', e => upsert(JSON.parse(e.data)));
+  es.addEventListener('snapshot', e => load(JSON.parse(e.data))); // the server re-priced every row
+  es.onerror = () => {
+    setLive(false);
+    if (es.readyState === EventSource.CLOSED) setTimeout(connect, 2000); // the browser retries on its own otherwise
+  };
+}
+connect();
+</script>
+</body>
+</html>

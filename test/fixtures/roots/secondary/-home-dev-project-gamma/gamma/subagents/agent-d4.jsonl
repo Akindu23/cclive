@@ -1,0 +1,2 @@
+{"type":"fork-context-ref","agentId":"d4","parentSessionId":"gamma","parentLastUuid":"as-3","contextLength":10}
+{"type":"assistant","uuid":"as-d1","sessionId":"gamma","isSidechain":true,"agentId":"d4","timestamp":"2026-09-10T09:00:15.000Z","requestId":"req_msg_sub_d1","message":{"id":"msg_sub_d1","model":"claude-sonnet-5","stop_reason":"end_turn","content":[{"type":"text","text":"[redacted]"}],"usage":{"input_tokens":100,"output_tokens":10,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
