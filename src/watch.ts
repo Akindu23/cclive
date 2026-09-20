@@ -1,4 +1,4 @@
-import { watch, type FSWatcher } from 'node:fs';
+import { realpathSync, watch, type FSWatcher } from 'node:fs';
 
 const TRAILING_MS = 50;
 const MAX_WAIT_MS = 250;
@@ -10,7 +10,8 @@ export function watchTranscripts(roots: string[], onChange: (root: string, rel: 
     const pending = new Map<string, { timer: NodeJS.Timeout; deadline: number }>();
     let watcher: FSWatcher;
     try {
-      watcher = watch(root, { recursive: true }, (_event, filename) => {
+      // Watch the real path: on Windows a root spelled as an 8.3 short name (C:\Users\RUNNER~1\...) trips a libuv assertion in the recursive watcher.
+      watcher = watch(realpathSync.native(root), { recursive: true }, (_event, filename) => {
         const rel = filename?.toString();
         if (!rel?.endsWith('.jsonl')) return; // yagni: an event with no filename is dropped; the next write for that file brings its own
         const now = Date.now();

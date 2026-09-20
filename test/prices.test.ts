@@ -120,8 +120,8 @@ describe('price refresh, disk cache, --offline and --pricing', () => {
   });
 
   it('configDir is $XDG_CONFIG_HOME/cclive, else %APPDATA%\\cclive on Windows, else ~/.config/cclive', () => {
-    expect(configDir({ XDG_CONFIG_HOME: '/x' }, '/home/u', 'linux')).toBe('/x/cclive');
-    expect(configDir({}, '/home/u', 'linux')).toBe('/home/u/.config/cclive');
+    expect(configDir({ XDG_CONFIG_HOME: '/x' }, '/home/u', 'linux')).toBe(join('/x', 'cclive'));
+    expect(configDir({}, '/home/u', 'linux')).toBe(join('/home/u', '.config', 'cclive'));
     expect(configDir({ APPDATA: 'C:\\Users\\u\\AppData\\Roaming' }, 'C:\\Users\\u', 'win32')).toBe(join('C:\\Users\\u\\AppData\\Roaming', 'cclive'));
     expect(configDir({}, '/home/u', 'win32')).toBe(join('/home/u', '.config', 'cclive'));
   });
