@@ -5,22 +5,36 @@ on:
     branches: [main]
   pull_request:
 
+# vitest 5 needs Node 22.12+, so the suite runs on current LTS. The shipped bundle
+# supports Node 20.16 (package.json engines), so that floor is smoked with the built CLI.
 jobs:
   test:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node: ['20.16', 'lts/*']
     runs-on: ${{ matrix.os }}
+    env:
+      CCLIVE_OFFLINE: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: lts/*
           cache: npm
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.16'
+      - name: Smoke the built CLI on the Node 20.16 floor
+        shell: bash
         env:
-          CCLIVE_OFFLINE: '1'
+          HOME: ${{ runner.temp }}
+          USERPROFILE: ${{ runner.temp }}
+          XDG_CONFIG_HOME: ${{ runner.temp }}
+        run: |
+          node --version
+          node dist/cli.js --version
+          node dist/cli.js --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!Array.isArray(j.rows))process.exit(1);console.log("snapshot ok, rows:",j.rows.length)})'
