@@ -25,7 +25,7 @@ Flags: --port <n>  --no-open  --pricing <file>  --offline  --budget <usd>  --jso
 | `--json` | off | Print the full snapshot as JSON and exit. |
 | `--help`, `--version` | | Standard. |
 
-Requires Node 20.16 or newer. The terminal prints the URL with how many transcripts were read and how long startup took, so the 2 s target is checkable on your own history.
+Requires Node 22.12 or newer. The terminal prints the URL with how many transcripts were read and how long startup took, so the 2 s target is checkable on your own history.
 
 Only the budget persists, in `~/.config/cclive/config.json` (`$XDG_CONFIG_HOME/cclive` when set, `%APPDATA%\cclive` on Windows). Every other flag applies to one run.
 

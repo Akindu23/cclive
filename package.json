@@ -14,7 +14,7 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=20.16"
+    "node": ">=22.12"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
