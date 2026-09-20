@@ -55,6 +55,14 @@ interface SystemRecord {
   compactMetadata?: Partial<Compaction>;
 }
 
+/** Claude Code's own running total for a session, written once near its end. It counts requests the transcript never holds: aborted and retried streams, sidecar calls, compaction. */
+interface CostStateRecord {
+  type: 'cost-state';
+  sessionId: string;
+  totalCostUSD?: number;
+  startTime?: number;
+}
+
 interface TitleRecord {
   type: 'ai-title' | 'custom-title';
   sessionId: string;
@@ -76,9 +84,11 @@ interface SessionState {
   startTime: number;
   aiTitle: string | null;
   customTitle: string | null;
+  /** `totalCostUSD` from the session's last `cost-state` record, null until one is seen. */
+  costTotal: number | null;
 }
 
-const EMPTY_SESSION: SessionState = { project: '', cwdName: null, lastWrite: 0, startTime: Infinity, aiTitle: null, customTitle: null };
+const EMPTY_SESSION: SessionState = { project: '', cwdName: null, lastWrite: 0, startTime: Infinity, aiTitle: null, customTitle: null, costTotal: null };
 
 /** Holds every request seen, keyed by message id, and prices it. Feed lines, read rows. */
 export class RequestStore {
@@ -97,8 +107,16 @@ export class RequestStore {
   /** One shared string per model id, so ten thousand rows do not hold ten thousand copies. */
   private readonly models = new Map<string, string>();
   skippedLines = 0;
+  private costStateChanged = false;
 
   constructor(private prices: PriceTable) {}
+
+  /** Whether a `cost-state` record landed since the last call. The server broadcasts the new unlogged figure when it did. */
+  takeCostStateChanged(): boolean {
+    const changed = this.costStateChanged;
+    this.costStateChanged = false;
+    return changed;
+  }
 
   /** Swap the price table and re-estimate every row, refreshing its unpriced flag. */
   reprice(prices: PriceTable): void {
@@ -153,6 +171,7 @@ export class RequestStore {
     if (rec.type === 'user') return this.feedLink(rec as LinkRecord);
     if (rec.type === 'system') this.feedSystem(rec as SystemRecord);
     if (rec.type === 'ai-title' || rec.type === 'custom-title') this.feedTitle(rec as TitleRecord);
+    if (rec.type === 'cost-state') this.feedCostState(rec as CostStateRecord);
     if (rec.type !== 'assistant') return [];
     return this.feedAssistant(rec as AssistantRecord);
   }
@@ -177,6 +196,15 @@ export class RequestStore {
       postTokens: m.postTokens ?? 0,
       cumulativeDroppedTokens: m.cumulativeDroppedTokens ?? 0,
     });
+  }
+
+  private feedCostState(rec: CostStateRecord): void {
+    if (typeof rec.sessionId !== 'string' || typeof rec.totalCostUSD !== 'number' || !Number.isFinite(rec.totalCostUSD)) return;
+    const state = this.session(rec.sessionId);
+    if (typeof rec.startTime === 'number' && rec.startTime < state.startTime) state.startTime = rec.startTime;
+    if (state.costTotal === rec.totalCostUSD) return;
+    state.costTotal = rec.totalCostUSD;
+    this.costStateChanged = true;
   }
 
   /** Title records repeat many times per file; the last one wins. */
@@ -241,7 +269,8 @@ export class RequestStore {
       return [];
     }
     this.indexSpawner(rec);
-    const final = msg.stop_reason != null;
+    // Subagent transcripts write tool-call turns with a null stop_reason; a complete tool_use block still means the stream finished.
+    const final = msg.stop_reason != null || (msg.content ?? []).some((b) => b.type === 'tool_use');
     const existing = this.entries.get(msg.id);
     if (existing?.final && !final) return []; // partial line after the final one: superseded
 
@@ -305,6 +334,29 @@ export class RequestStore {
   /** Every row, newest first. */
   rows(): RequestRow[] {
     return [...this.entries.values()].map((e) => e.row).sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  /**
+   * USD that Claude Code counted for sessions but the transcript rows do not carry, summed over sessions whose last row
+   * (or start, when they hold no rows) is at or after `since`. Per session it is the `cost-state` total less the rows' estimates, floored at zero.
+   */
+  unlogged(since: number): number {
+    const rowSum = new Map<string, { estimate: number; last: number }>();
+    for (const { row } of this.entries.values()) {
+      const acc = rowSum.get(row.sessionId) ?? { estimate: 0, last: -Infinity };
+      acc.estimate += row.estimate;
+      acc.last = Math.max(acc.last, row.timestamp);
+      rowSum.set(row.sessionId, acc);
+    }
+    let total = 0;
+    for (const [sessionId, s] of this.sessionStates) {
+      if (s.costTotal === null) continue;
+      const rows = rowSum.get(sessionId);
+      const at = rows ? rows.last : s.startTime;
+      if (!Number.isFinite(at) || at < since) continue; // a session with no row and no start cannot be placed in a month
+      total += Math.max(0, s.costTotal - (rows?.estimate ?? 0));
+    }
+    return total;
   }
 
   /** Every session seen, newest first by last write; only the first is `newest`. */

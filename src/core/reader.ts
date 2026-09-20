@@ -44,6 +44,11 @@ export class Reader {
     return [...changed.values()];
   }
 
+  /** USD Claude Code counted this month that the rows do not carry. See `Snapshot.unlogged`. */
+  unlogged(now = new Date()): number {
+    return this.store.unlogged(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  }
+
   /** The history sweep: forget rows, dedup ids and tail state that fell out of the history window as of `now`. */
   sweep(now: Date): void {
     const since = historyWindowStart(now);
@@ -54,11 +59,13 @@ export class Reader {
   snapshot(now = new Date()): Snapshot {
     const rows = this.store.rows();
     const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+    const unlogged = this.store.unlogged(monthStart);
     return {
       rows,
       sessions: this.store.sessions(),
       priceSource: this.priceSource,
-      monthToDate: rows.reduce((sum, r) => (r.timestamp >= monthStart ? sum + r.estimate : sum), 0),
+      monthToDate: rows.reduce((sum, r) => (r.timestamp >= monthStart ? sum + r.estimate : sum), unlogged),
+      unlogged,
       budget: this.budget,
       skippedLines: this.store.skippedLines,
       unpricedRows: rows.filter((r) => r.flags.includes('unpriced')).length,

@@ -134,6 +134,54 @@ describe('snapshot from the anonymised real session', () => {
     expect(aborted.map((r) => r.messageId)).toEqual(['msg_011CesD3KDuskLCFFW18kbnE']);
     expect(snapshot.unpricedRows).toBe(0);
     expect(snapshot.skippedLines).toBe(1); // the one synthetic API error line
+
+    // the session's cost-state record says 4.37727375: the difference is what Claude Code counted but never wrote as a request
+    expect(snapshot.unlogged).toBeCloseTo(4.37727375 - 4.37592325, 6);
+    expect(snapshot.monthToDate).toBeCloseTo(4.37727375, 6);
+  });
+});
+
+describe('cost-state floor', () => {
+  const SEP = Date.UTC(2026, 8, 1);
+  const request = (id: string, sessionId: string, ts: string, output: number) => JSON.stringify({ type: 'assistant', uuid: id, sessionId, timestamp: ts, isSidechain: false, requestId: 'r',
+    message: { id, model: 'claude-sonnet-5', stop_reason: 'end_turn', usage: { input_tokens: 0, output_tokens: output, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } } });
+  const costState = (sessionId: string, totalCostUSD: number, startTime?: number) => JSON.stringify({ type: 'cost-state', sessionId, totalCostUSD, startTime, modelUsage: {} });
+
+  it('adds only the excess over the rows, per session, and never goes below zero', () => {
+    const store = new RequestStore(shippedPrices());
+    store.feed(request('a1', 'a', '2026-09-10T00:00:00Z', 100_000)); // Sonnet 5 output at $10/M: 1.00
+    store.feed(request('b1', 'b', '2026-09-10T00:00:00Z', 100_000));
+    expect(store.unlogged(SEP)).toBe(0); // no cost-state yet
+    store.feed(costState('a', 1.25));
+    store.feed(costState('b', 0.5)); // rows already exceed it
+    expect(store.unlogged(SEP)).toBeCloseTo(0.25, 10);
+    expect(store.takeCostStateChanged()).toBe(true);
+    expect(store.takeCostStateChanged()).toBe(false);
+    store.feed(costState('a', 1.25)); // repeated, unchanged
+    expect(store.takeCostStateChanged()).toBe(false);
+    store.feed(costState('a', 1.75)); // the last record wins
+    expect(store.unlogged(SEP)).toBeCloseTo(0.75, 10);
+    expect(store.takeCostStateChanged()).toBe(true);
+  });
+
+  it('attributes the excess to the month of the session\'s last row, or its start when it holds no rows', () => {
+    const store = new RequestStore(shippedPrices());
+    store.feed(request('old1', 'old', '2026-08-20T00:00:00Z', 0));
+    store.feed(costState('old', 3)); // last month's session
+    store.feed(costState('norows', 2, Date.UTC(2026, 8, 5))); // started this month, transcript holds no priced request
+    store.feed(costState('norows-old', 2, Date.UTC(2026, 7, 5)));
+    store.feed(costState('nostart', 2)); // neither rows nor a start: cannot be placed, so left out
+    expect(store.unlogged(SEP)).toBe(2);
+    expect(store.unlogged(Date.UTC(2026, 7, 1))).toBe(7);
+  });
+
+  it('ignores records without a finite total', () => {
+    const store = new RequestStore(shippedPrices());
+    store.feed(JSON.stringify({ type: 'cost-state', sessionId: 's', totalCostUSD: 'NaN' }));
+    store.feed(JSON.stringify({ type: 'cost-state', sessionId: 's' }));
+    store.feed(JSON.stringify({ type: 'cost-state', totalCostUSD: 5 }));
+    expect(store.unlogged(0)).toBe(0);
+    expect(store.takeCostStateChanged()).toBe(false);
   });
 });
 
@@ -145,7 +193,7 @@ describe('subagent linkage from the two-level spawn fixture', () => {
     const roots = copyFixtureRoots(NOW);
     const snapshot = await buildSnapshot({ roots: [roots.secondary], prices: shippedPrices(), now: NOW });
     const rows = new Map(snapshot.rows.filter((r) => r.sessionId === SESSION).map((r) => [r.messageId, r]));
-    expect(rows.size).toBe(8);
+    expect(rows.size).toBe(9);
 
     expect(rows.get('msg_sub_a1')?.parentMessageId).toBe('msg_spawn_a');
     expect(rows.get('msg_sub_a2')?.parentMessageId).toBe('msg_spawn_a');
@@ -164,6 +212,14 @@ describe('subagent linkage from the two-level spawn fixture', () => {
     expect(rows.get('msg_sub_b1')).toMatchObject({ sourceType: 'subagent', agentId: 'b2', sourceLabel: 'Explore: nested scan' });
     expect(rows.get('msg_sub_c1')).toMatchObject({ sourceType: 'subagent', agentId: 'c3', sourceLabel: 'general-purpose: no meta task' }); // no meta file
     expect(rows.get('msg_spawn_a')).toMatchObject({ sourceType: 'main', agentId: null, sourceLabel: 'main' });
+  });
+
+  it('does not flag a subagent tool_use turn as aborted when its stop_reason is null', async () => {
+    const roots = copyFixtureRoots(NOW);
+    const snapshot = await buildSnapshot({ roots: [roots.secondary], prices: shippedPrices(), now: NOW });
+    const rows = new Map(snapshot.rows.map((r) => [r.messageId, r]));
+    // Claude Code writes subagent tool-call turns with stop_reason null; only the closing end_turn text carries one.
+    expect(rows.get('msg_sub_c0')).toMatchObject({ sourceType: 'subagent', agentId: 'c3', flags: [], output: 20 });
   });
 
   it('holds a subagent with no link record at top level, then nests it when the link arrives incrementally', () => {

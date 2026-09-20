@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>cclive</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23141416'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%2334d399' stroke-width='2.5' stroke-dasharray='40 17' stroke-linecap='round' transform='rotate(-90 16 16)'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%2334d399'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{--bg:#0b0b0c;--panel:#141416;--panel2:#1b1b1e;--border:#26262b;--text:#e7e7ea;--muted:#8b8b93;--dim:#5c5c66;--bad:#f87171;--font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;--mono:"SF Mono",ui-monospace,Menlo,monospace}
@@ -11,7 +12,14 @@ html,body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 var(--f
 .wrap{max-width:1180px;margin:0 auto;padding:28px 24px 96px}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
 .muted{color:var(--muted)}.dim{color:var(--dim)}.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-h1{font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
+h1{font-size:17px;font-weight:650;margin:0;letter-spacing:-.015em;display:flex;align-items:center;gap:10px}
+.mark{width:26px;height:26px;border-radius:7px;background:var(--panel2);border:1px solid var(--border);display:grid;place-items:center;flex:none}
+.mark svg{width:16px;height:16px;display:block}
+.mark .ring{stroke:var(--dim);transition:stroke .3s}.mark .core{fill:var(--dim);transition:fill .3s}
+.mark.live .ring{stroke:#34d399;animation:orbit 4s linear infinite}.mark.live .core{fill:#34d399;animation:beat 1.6s ease-in-out infinite}
+@keyframes orbit{to{stroke-dashoffset:-69}}
+@keyframes beat{0%,100%{opacity:1}50%{opacity:.45}}
+.tagline{font-size:12px;color:var(--muted);font-weight:400;margin-left:2px;padding-left:12px;border-left:1px solid var(--border)}
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
@@ -42,7 +50,7 @@ tr:last-child td{border-bottom:0}
 tr.parent{cursor:pointer}tr.parent:hover td{background:#17171a}
 tr.child td{background:#10101250}
 td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
-.chev{display:inline-block;width:14px;color:var(--dim);font-size:10px;transition:transform .12s}
+.chev{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;line-height:1;color:var(--dim);font-size:10px;transition:transform .12s;flex:none}
 .chev.open{transform:rotate(90deg)}
 .src{display:inline-flex;align-items:center;gap:6px;vertical-align:middle}
 .src .kind{color:var(--muted)}
@@ -50,6 +58,9 @@ td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabu
 .pill i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:1px}
 .badge{display:inline-block;padding:0 6px;border-radius:4px;font-size:10.5px;margin-left:6px;background:#2a2a30;color:var(--muted);vertical-align:middle}
 .badge.aborted{background:#3b1f22;color:var(--bad)}
+.badge.id{font-family:var(--mono);background:#1f2a3a;color:#93c5fd}
+tr.agent td{background:#12121a}
+.src .req{color:var(--dim)}
 .empty{padding:32px;text-align:center;color:var(--dim)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--dim);margin-right:9px;vertical-align:1px}
 .dot.live{background:#34d399;animation:pulse 1.6s ease-in-out infinite}
@@ -59,11 +70,12 @@ td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabu
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar"><h1><span id="dot" class="dot"></span>cclive<span id="conn" hidden>reconnecting…</span></h1><span id="summary" class="muted" style="font-size:12px"></span></div>
+  <div class="topbar"><h1><span id="dot" class="mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle class="ring" cx="16" cy="16" r="11" fill="none" stroke-width="3" stroke-dasharray="50 19" stroke-linecap="round" transform="rotate(-90 16 16)"/><circle class="core" cx="16" cy="16" r="5"/></svg></span>cclive<span class="tagline">Every Claude Code request, live as it lands in your transcripts</span><span id="conn" hidden>reconnecting…</span></h1><span id="summary" class="muted" style="font-size:12px"></span></div>
   <div id="budget" class="card" style="margin-top:0">
     <div class="row"><div><span id="mtd" class="mono" style="font-size:22px;font-weight:600"></span><span id="of" class="muted"></span> <span class="muted">month to date</span></div><span id="reset" class="muted" style="font-size:12px"></span></div>
     <div id="bar" class="bar" hidden><i></i></div>
     <div class="dim" style="font-size:11.5px;margin-top:10px">Estimate at list price from local transcripts. Your invoice may differ. <span id="prices"></span></div>
+    <div id="unlogged" class="dim" style="font-size:11.5px;margin-top:4px" hidden></div>
   </div>
   <div class="row" style="margin:18px 0 12px">
     <div id="chips" class="chips"></div>
@@ -82,8 +94,8 @@ td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabu
 </div>
 <script src="/chart.js"></script>
 <script>
-const MODEL_COLORS = { fable: '#c084fc', opus: '#60a5fa', sonnet: '#34d399', haiku: '#fbbf24' };
-const PALETTE = ['#c084fc', '#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#fb923c', '#a3e635', '#38bdf8'];
+const MODEL_COLORS = { fable: '#d97757', opus: '#60a5fa', sonnet: '#34d399', haiku: '#fde047' };
+const PALETTE = ['#d97757', '#60a5fa', '#34d399', '#fde047', '#f472b6', '#fb923c', '#a3e635', '#38bdf8'];
 const DAY = 86400e3;
 /** Chip label → id used in the CSV file name. */
 const RANGES = { '1d': '1d', '7d': '7d', '30d': '30d', 'MTD': 'mtd', 'Last month': 'lastmonth' };
@@ -105,7 +117,7 @@ function modelPill(id) {
 }
 
 const state = {
-  rows: new Map(), sessions: [], top: [], childrenOf: new Map(), expanded: new Set(), budget: null, priceSource: '',
+  rows: new Map(), sessions: [], top: [], childrenOf: new Map(), expanded: new Set(), budget: null, priceSource: '', unlogged: 0,
   range: '7d', session: new URLSearchParams(location.search).get('session') || null, groupBy: 'model', metric: 'spend',
   /** Rows matching the chip and session filter, flat, newest first. */
   visible: [],
@@ -129,8 +141,13 @@ function sessionLabel(id) {
   return s ? s.label : id;
 }
 
-function countSubs(row) {
-  return (state.childrenOf.get(row.messageId) || []).reduce((n, c) => n + 1 + countSubs(c), 0);
+/** Every nested subagent request under `row`, plus the distinct agents that made them. */
+function countSubs(row, agents = new Set()) {
+  const reqs = (state.childrenOf.get(row.messageId) || []).reduce((n, c) => {
+    agents.add(c.agentId);
+    return n + 1 + countSubs(c, agents).reqs;
+  }, 0);
+  return { reqs, agents: agents.size };
 }
 
 function badgeTitle(row, flag) {
@@ -139,26 +156,67 @@ function badgeTitle(row, flag) {
   return ` title="pre ${tok(c.preTokens)} · post ${tok(c.postTokens)} · dropped so far ${tok(c.cumulativeDroppedTokens)}"`;
 }
 
-function rowHTML(row, depth) {
-  const children = state.childrenOf.get(row.messageId) || [];
+/** Fold a newest-first list of rows into display nodes: main rows stay as they are, subagent rows collapse into one group per agent at the position of its newest request. */
+function groupAgents(rows) {
+  const nodes = [], byAgent = new Map();
+  for (const r of rows) {
+    if (r.sourceType !== 'subagent') { nodes.push(r); continue; }
+    let g = byAgent.get(r.agentId);
+    if (!g) {
+      g = { group: true, agentId: r.agentId, sessionId: r.sessionId, sourceLabel: r.sourceLabel, timestamp: r.timestamp, rows: [] };
+      byAgent.set(r.agentId, g);
+      nodes.push(g);
+    }
+    g.rows.push(r);
+  }
+  return nodes;
+}
+
+const sumOf = (rows, f) => rows.reduce((s, r) => s + f(r), 0);
+const shortId = id => id.slice(0, 7);
+const chevHTML = (open, has) => `<span class="chev ${open ? 'open' : ''}">${has ? '▶' : ''}</span>`;
+const srcHTML = (depth, chev, label) => {
+  const [kind, desc] = label.includes(': ') ? label.split(/: (.*)/s) : [label, ''];
+  return `<span class="src" style="padding-left:${depth * 18}px">${chev}${desc ? `<span class="kind">${esc(kind)}:</span> ${esc(desc)}` : esc(kind)}</span>`;
+};
+const numCells = (r, thinking, cache5m, cache1h) =>
+  `<td class="num" title="not from cache · whole prompt ${tok(r.input + r.cacheRead + cache5m + cache1h)}">${tok(r.input)}</td>`
+  + `<td class="num" title="thinking ${tok(thinking)}">${tok(r.output)}</td>`
+  + `<td class="num">${tok(r.cacheRead)}</td>`
+  + `<td class="num" title="5m ${tok(cache5m)} · 1h ${tok(cache1h)}">${tok(cache5m + cache1h)}</td>`
+  + `<td class="num">${usd(r.estimate)}</td>`;
+
+/** One row per subagent: its label, short id and request count, with the tokens and cost of every request it made. Expands to those requests. */
+function groupHTML(g, depth) {
+  const key = 'agent:' + g.agentId;
+  const open = state.expanded.has(key);
+  const total = { input: sumOf(g.rows, r => r.input), output: sumOf(g.rows, r => r.output), cacheRead: sumOf(g.rows, r => r.cacheRead), estimate: sumOf(g.rows, r => r.estimate) };
+  const models = new Set(g.rows.map(r => r.model));
+  const badges = `<span class="badge id" title="agent ${esc(g.agentId)}">${esc(shortId(g.agentId))}</span>`
+    + `<span class="badge">${g.rows.length} Request${g.rows.length === 1 ? '' : 's'}</span>`;
+  let html = `<tr class="parent agent ${depth ? 'child' : ''}" data-id="${esc(key)}" title="agent ${esc(g.agentId)}">`
+    + `<td class="mono dim">${tm(g.timestamp)}</td><td>${srcHTML(depth, chevHTML(open, true), g.sourceLabel)}${badges}</td>`
+    + `<td>${models.size === 1 ? modelPill(g.rows[0].model) : `<span class="dim">${models.size} models</span>`}</td>`
+    + numCells(total, sumOf(g.rows, r => r.thinking), sumOf(g.rows, r => r.cacheWrite5m), sumOf(g.rows, r => r.cacheWrite1h)) + '</tr>';
+  if (open) for (const r of g.rows) html += rowHTML(r, depth + 1, true);
+  return html;
+}
+
+function rowHTML(row, depth, inGroup = false) {
+  if (row.group) return groupHTML(row, depth);
+  const children = groupAgents(state.childrenOf.get(row.messageId) || []);
   const open = state.expanded.has(row.messageId);
   const subs = countSubs(row);
-  const [kind, desc] = row.sourceLabel.includes(': ') ? row.sourceLabel.split(/: (.*)/s) : [row.sourceLabel, ''];
-  const chev = `<span class="chev ${open ? 'open' : ''}">${children.length ? '▶' : ''}</span>`;
-  const src = desc
-    ? `<span class="src" style="padding-left:${depth * 18}px">${chev}<span class="kind">${esc(kind)}:</span> ${esc(desc)}</span>`
-    : `<span class="src" style="padding-left:${depth * 18}px">${chev}${esc(kind)}</span>`;
+  const chev = chevHTML(open, children.length);
+  const src = inGroup
+    ? `<span class="src" style="padding-left:${depth * 18}px">${chev}<span class="req">request</span></span>`
+    : srcHTML(depth, chev, row.sourceLabel);
   const badges = row.flags.map(f => `<span class="badge ${f}"${badgeTitle(row, f)}>${f}</span>`).join('')
-    + (subs ? `<span class="badge">${subs} sub</span>` : '');
-  const cache = row.cacheRead + row.cacheWrite5m + row.cacheWrite1h;
+    + (subs.reqs ? `<span class="badge">${subs.agents} Sub-Agent${subs.agents === 1 ? '' : 's'} - ${subs.reqs} Request${subs.reqs === 1 ? '' : 's'}</span>` : '');
   const tip = `${row.messageId} · ${row.requestId}${row.agentId ? ' · agent ' + row.agentId : ''}`;
   let html = `<tr class="${children.length ? 'parent' : ''} ${depth ? 'child' : ''}" data-id="${esc(row.messageId)}" title="${esc(tip)}">`
     + `<td class="mono dim">${tm(row.timestamp)}</td><td>${src}${badges}</td><td>${modelPill(row.model)}</td>`
-    + `<td class="num" title="not from cache · whole prompt ${tok(row.input + cache)}">${tok(row.input)}</td>`
-    + `<td class="num" title="thinking ${tok(row.thinking)}">${tok(row.output)}</td>`
-    + `<td class="num">${tok(row.cacheRead)}</td>`
-    + `<td class="num" title="5m ${tok(row.cacheWrite5m)} · 1h ${tok(row.cacheWrite1h)}">${tok(row.cacheWrite5m + row.cacheWrite1h)}</td>`
-    + `<td class="num">${usd(row.estimate)}</td></tr>`;
+    + numCells(row, row.thinking, row.cacheWrite5m, row.cacheWrite1h) + '</tr>';
   if (open) for (const c of children) html += rowHTML(c, depth + 1);
   return html;
 }
@@ -214,7 +272,7 @@ const metricOf = {
 };
 function colorFor(key, i, sample) {
   if (state.groupBy === 'model') return modelInfo(sample.model).color;
-  if (state.groupBy === 'source') return key === 'main' ? '#c084fc' : '#34d399';
+  if (state.groupBy === 'source') return key === 'main' ? '#d97757' : '#34d399';
   return PALETTE[i % PALETTE.length];
 }
 
@@ -295,7 +353,7 @@ function exportCsv() {
 }
 
 function render() {
-  const body = state.top.map(r => rowHTML(r, 0)).join('') || '<tr><td colspan="8" class="empty">No requests in range</td></tr>';
+  const body = groupAgents(state.top).map(r => rowHTML(r, 0)).join('') || '<tr><td colspan="8" class="empty">No requests in range</td></tr>';
   document.getElementById('table').innerHTML = '<table><thead><tr><th>Time</th><th>Source</th><th>Model</th>'
     + '<th class="num" title="Input tokens not served from the prompt cache. Same as &quot;input&quot; in Claude Code\'s /usage. Hover a cell for the whole prompt size.">Input</th>'
     + '<th class="num" title="Output tokens, thinking included.">Output</th>'
@@ -344,9 +402,12 @@ function renderBudget() {
   const budget = state.budget;
   const now = new Date();
   const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
-  let mtd = 0;
+  let mtd = state.unlogged;
   for (const r of state.rows.values()) if (r.timestamp >= monthStart) mtd += r.estimate;
   document.getElementById('mtd').textContent = usd(mtd);
+  const unlogged = document.getElementById('unlogged');
+  unlogged.hidden = !(state.unlogged > 0);
+  unlogged.textContent = `Includes ${usd(state.unlogged)} that Claude Code counted for finished sessions but never wrote as requests: aborted and retried streams, sidecar calls, compaction.`;
   document.getElementById('of').textContent = budget ? ` of ${usd(budget)}` : '';
   document.getElementById('reset').textContent = budget ? `Resets ${nextReset()}` : 'Set a budget with --budget';
   const bar = document.getElementById('bar');
@@ -363,6 +424,7 @@ function load(snapshot) {
   state.sessions = snapshot.sessions;
   state.budget = snapshot.budget;
   state.priceSource = snapshot.priceSource;
+  state.unlogged = snapshot.unlogged ?? 0;
   if (state.session && !state.sessions.some(s => s.sessionId === state.session)) setSession(null); // a bookmarked session that left the history window
   renderSessions();
   schedule();
@@ -414,6 +476,7 @@ function connect() {
   });
   es.addEventListener('rows', e => upsert(JSON.parse(e.data)));
   es.addEventListener('snapshot', e => load(JSON.parse(e.data))); // the server re-priced every row
+  es.addEventListener('unlogged', e => { state.unlogged = JSON.parse(e.data); schedule(); }); // a session wrote its cost-state record
   es.onerror = () => {
     setLive(false);
     if (es.readyState === EventSource.CLOSED) setTimeout(connect, 2000); // the browser retries on its own otherwise

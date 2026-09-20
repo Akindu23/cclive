@@ -132,6 +132,27 @@ describe('local server', () => {
     expect(sub).toMatchObject({ parentMessageId: 'msg_live_spawn', sourceType: 'subagent', sourceLabel: 'Explore: live scan meta' });
   });
 
+  it('pushes the new unlogged figure when a session writes its cost-state record', async () => {
+    const own = copyFixtureRoots(NOW); // own copy: the record appended here must not reach the sweep test's re-read of gamma
+    const { reader, base } = await start([own.secondary]);
+    const ac = new AbortController();
+    closers.push(() => ac.abort());
+    await new Promise((r) => setTimeout(r, 300));
+    const stream = await openStream(`${base}/api/events`, ac.signal);
+    await stream.next('hello');
+    expect(reader.unlogged(NOW)).toBe(0);
+
+    const main = join(own.secondary, '-home-dev-project-gamma', `${GAMMA}.jsonl`);
+    appendFileSync(main, JSON.stringify({ type: 'cost-state', sessionId: GAMMA, startTime: 1788925671889, totalCostUSD: 1, modelUsage: {} }) + '\n');
+    const unlogged = JSON.parse((await stream.next('unlogged')).data);
+    expect(unlogged).toBeGreaterThan(0);
+    expect(unlogged).toBeLessThan(1);
+    expect(unlogged).toBe(reader.unlogged(NOW));
+    const snapshot = (await (await fetch(`${base}/api/snapshot`)).json()) as { unlogged: number; monthToDate: number };
+    expect(snapshot.unlogged).toBe(unlogged);
+    expect(snapshot.monthToDate).toBeGreaterThan(unlogged);
+  });
+
   it('re-pricing the reader and broadcasting pushes a snapshot event with the new label and estimates', async () => {
     const { reader, server, base } = await start([roots.secondary]);
     const ac = new AbortController();

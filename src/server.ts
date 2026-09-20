@@ -76,6 +76,11 @@ export function createServer(reader: Reader, page: string, chartJs: string, cloc
   });
 
   const broadcastSnapshot = () => broadcast(`event: snapshot\ndata: ${JSON.stringify(reader.snapshot(clock()))}\n\n`);
+  /** Rows go out batched; a `cost-state` record has no row, so the new unlogged figure goes out on its own. */
+  const pushChanges = (rows: RequestRow[]) => {
+    push(rows);
+    if (reader.store.takeCostStateChanged() && clients.size > 0) broadcast(`event: unlogged\ndata: ${JSON.stringify(reader.unlogged(clock()))}\n\n`);
+  };
   const watchers = watchTranscripts(reader.roots, (root, rel) => {
     const now = clock();
     const day = Math.floor(now.getTime() / DAY_MS);
@@ -84,7 +89,7 @@ export function createServer(reader: Reader, page: string, chartJs: string, cloc
       sweptDay = day;
       reader.sweep(now);
     }
-    reader.reconcile(root, rel).then(sweep ? broadcastSnapshot : push, () => {}); // a vanished file is not an error worth stopping for
+    reader.reconcile(root, rel).then(sweep ? broadcastSnapshot : pushChanges, () => {}); // a vanished file is not an error worth stopping for
   });
   server.on('close', () => {
     watchers.forEach((w) => w.close());

@@ -46,8 +46,10 @@ export interface Snapshot {
   /** Newest first by last write. */
   sessions: Session[];
   priceSource: string;
-  /** Sum of every row's estimate since 00:00 UTC on the 1st of the current month, across every session and source. */
+  /** Every row's estimate since 00:00 UTC on the 1st of the current month plus `unlogged`, across every session and source. */
   monthToDate: number;
+  /** USD this month that Claude Code's per-session `cost-state` totals hold above the rows: aborted and retried streams, sidecar calls, compaction. */
+  unlogged: number;
   /** The monthly cap the user typed with `--budget`, `null` when unset. */
   budget: number | null;
   skippedLines: number;
