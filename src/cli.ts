@@ -17,9 +17,9 @@ const DEFAULT_PORT = 4747;
 const HELP = `cclive - live per-request dashboard for Claude Code, read from local transcripts
 
 Usage:
-  npx cclive                     # read transcripts, open the dashboard in the browser
-  npx cclive --budget 1500       # set a monthly budget in USD (saved for later runs)
-  npx cclive --json > out.json   # print the snapshot and exit
+  npx cclive-dashboard                     # read transcripts, open the dashboard in the browser
+  npx cclive-dashboard --budget 1500       # set a monthly budget in USD (saved for later runs)
+  npx cclive-dashboard --json > out.json   # print the snapshot and exit
 
 Flags:
   --budget <usd>     Monthly budget for the budget card, saved to the config file; 0 clears it

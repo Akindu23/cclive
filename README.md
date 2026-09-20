@@ -9,9 +9,9 @@ For daily and monthly rollup tables use [ccusage](https://github.com/ryoppippi/c
 ## Usage
 
 ```
-npx cclive                 # read transcripts, open http://localhost:4747
-npx cclive --budget 1500   # set a monthly budget (saved for later runs)
-npx cclive --json > out.json
+npx cclive-dashboard                 # read transcripts, open http://localhost:4747
+npx cclive-dashboard --budget 1500   # set a monthly budget (saved for later runs)
+npx cclive-dashboard --json > out.json
 Flags: --port <n>  --no-open  --pricing <file>  --offline  --budget <usd>  --json
 ```
 
@@ -25,7 +25,7 @@ Flags: --port <n>  --no-open  --pricing <file>  --offline  --budget <usd>  --jso
 | `--json` | off | Print the full snapshot as JSON and exit. |
 | `--help`, `--version` | | Standard. |
 
-Requires Node 22.12 or newer. The terminal prints the URL with how many transcripts were read and how long startup took, so the 2 s target is checkable on your own history.
+Installed globally with `npm i -g cclive-dashboard`, the command is `cclive`. Requires Node 22.12 or newer. The terminal prints the URL with how many transcripts were read and how long startup took, so the 2 s target is checkable on your own history.
 
 Only the budget persists, in `~/.config/cclive/config.json` (`$XDG_CONFIG_HOME/cclive` when set, `%APPDATA%\cclive` on Windows). Every other flag applies to one run.
 
@@ -59,7 +59,7 @@ sudo sysctl fs.inotify.max_user_watches=524288
 There is no automated soak test. Before a release, run cclive for 24 hours alongside normal Claude Code use and sample it once a minute:
 
 ```
-npx cclive --no-open &
+npx cclive-dashboard --no-open &
 while true; do ps -o rss=,%cpu= -p $!; sleep 60; done
 ```
 
