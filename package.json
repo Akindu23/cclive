@@ -1,6 +1,6 @@
 {
   "name": "cclive-dashboard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Live per-request dashboard for Claude Code, read from local transcript files",
   "license": "MIT",
   "type": "module",
