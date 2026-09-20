@@ -9,13 +9,11 @@ export { LITELLM_URL, Reader, RequestStore, convertLiteLLM, formatPriceDate, for
 export interface BuildOptions {
   roots: string[];
   prices: PriceTable;
-  /** The price source label for the snapshot; defaults to the shipped-file label. */
   priceSource?: string;
   budget?: number | null;
   now?: Date;
 }
 
-/** Read every transcript in the history window under `roots` and return the priced snapshot. */
 export async function buildSnapshot({ roots, prices, priceSource, budget = null, now = new Date() }: BuildOptions): Promise<Snapshot> {
   const reader = new Reader(roots, prices, priceSource);
   reader.budget = budget;

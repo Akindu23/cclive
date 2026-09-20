@@ -7,7 +7,6 @@ export interface Compaction {
   cumulativeDroppedTokens: number;
 }
 
-/** One API request, deduplicated on message id. Timestamps are epoch milliseconds UTC. */
 export interface RequestRow {
   messageId: string;
   requestId: string;
@@ -18,6 +17,9 @@ export interface RequestRow {
   sourceType: 'main' | 'subagent';
   sourceLabel: string;
   model: string;
+  effort: string | null;
+  tools: string[];
+  attribution: string | null;
   speed: string | null;
   input: number;
   cacheRead: number;
@@ -31,26 +33,26 @@ export interface RequestRow {
   compaction: Compaction | null;
 }
 
-/** One Claude Code chat: a main transcript plus its subagent files. */
 export interface Session {
   sessionId: string;
-  /** `<project> · <title>`. The project is the basename of the session's cwd, else the folder name under the root; the title is the custom title, else the AI title, else the local start time. */
+  /** `<project> · <title>`. Project is cwd basename, else the folder under the root; title is custom, else AI, else local start time. */
   label: string;
-  /** Newest mtime across the session's files, epoch milliseconds. */
   lastWrite: number;
   newest: boolean;
+  /** Claude Code's own USD total from `cost-state`, null until one is written (usually at session end). */
+  costTotal: number | null;
+  /** Same total split by Claude Code's model id, e.g. `claude-opus-5[1m]`. */
+  costByModel: Record<string, number>;
 }
 
 export interface Snapshot {
   rows: RequestRow[];
-  /** Newest first by last write. */
   sessions: Session[];
   priceSource: string;
-  /** Every row's estimate since 00:00 UTC on the 1st of the current month plus `unlogged`, across every session and source. */
+  /** Every row's estimate since 00:00 UTC on the 1st of the current month plus `unlogged`. */
   monthToDate: number;
   /** USD this month that Claude Code's per-session `cost-state` totals hold above the rows: aborted and retried streams, sidecar calls, compaction. */
   unlogged: number;
-  /** The monthly cap the user typed with `--budget`, `null` when unset. */
   budget: number | null;
   skippedLines: number;
   unpricedRows: number;

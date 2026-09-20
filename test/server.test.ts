@@ -14,7 +14,6 @@ const GAMMA = 'gamma';
 
 interface SseEvent { event: string; data: string }
 
-/** Open the SSE stream and hand back a way to await the next event of a given type, with a deadline. */
 async function openStream(url: string, signal: AbortSignal) {
   const res = await fetch(url, { signal });
   expect(res.status).toBe(200);

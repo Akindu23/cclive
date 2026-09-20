@@ -9,7 +9,7 @@
 :root{--bg:#0b0b0c;--panel:#141416;--panel2:#1b1b1e;--border:#26262b;--text:#e7e7ea;--muted:#8b8b93;--dim:#5c5c66;--bad:#f87171;--font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;--mono:"SF Mono",ui-monospace,Menlo,monospace}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 var(--font)}
-.wrap{max-width:1180px;margin:0 auto;padding:28px 24px 96px}
+.wrap{max-width:1320px;margin:0 auto;padding:28px 24px 96px}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
 .muted{color:var(--muted)}.dim{color:var(--dim)}.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 h1{font-size:17px;font-weight:650;margin:0;letter-spacing:-.015em;display:flex;align-items:center;gap:10px}
@@ -25,12 +25,20 @@ h1{font-size:17px;font-weight:650;margin:0;letter-spacing:-.015em;display:flex;a
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{border:1px solid var(--border);background:transparent;color:var(--muted);padding:5px 11px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer}
 .chip:hover{color:var(--text)}.chip.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.chip[disabled]{opacity:.35;cursor:default}.chip[disabled]:hover{color:var(--muted)}
+#pager{padding:10px 10px 6px;font-size:12px;color:var(--muted)}#pager[hidden]{display:none}#pager .ctl .mono{color:var(--text)}
 select{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font:inherit;font-size:12px;max-width:320px}
 option.newest{color:#34d399}
 select:focus,select:focus-visible,button:focus-visible{outline:none;border-color:var(--muted);box-shadow:0 0 0 2px rgba(255,255,255,.08)}
 .ctl{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px}
-.bar{height:6px;border-radius:3px;background:var(--panel2);margin-top:10px;overflow:hidden}
-.bar i{display:block;height:100%;background:#34d399}
+.limit{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px 32px}
+.limit>div:first-child{min-width:0}
+#spent{font-size:17px}#spent .mono{font-weight:600}#spent #of{color:var(--muted)}
+#reset{font-size:12.5px;margin-top:4px;white-space:nowrap}
+#pct{font-size:13px;white-space:nowrap}#pct.over{color:var(--bad)}
+.bar{height:8px;border-radius:4px;background:var(--panel2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;background:#34d399;transition:width .3s}
+@media (max-width:720px){.limit{grid-template-columns:1fr auto}.limit .bar{grid-column:1/-1}}
 .bar.over i{background:var(--bad)}
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
 .tile .lbl{font-size:12px;color:var(--muted)}
@@ -43,7 +51,11 @@ select:focus,select:focus-visible,button:focus-visible{outline:none;border-color
 #chartwrap{position:relative;height:220px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+#table{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
+/* Time, Source and Model size to their content, so Model sits right after the longest Source entry. The numeric columns share the slack: they are right-aligned, so extra width only spaces them out. */
+th:not(.num),td:not(.num){width:1%}
+th:nth-child(2){padding-left:30px} /* 10px cell padding + 14px chevron slot + 6px gap, so the header lines up with the labels */
 th{font-weight:500;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11.5px;white-space:nowrap}
 td{padding:7px 10px;border-bottom:1px solid #1d1d21;white-space:nowrap;vertical-align:middle}
 tr:last-child td{border-bottom:0}
@@ -59,6 +71,13 @@ td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabu
 .badge{display:inline-block;padding:0 6px;border-radius:4px;font-size:10.5px;margin-left:6px;background:#2a2a30;color:var(--muted);vertical-align:middle}
 .badge.aborted{background:#3b1f22;color:var(--bad)}
 .badge.id{font-family:var(--mono);background:#1f2a3a;color:#93c5fd}
+.badge.tool{font-family:var(--mono);background:#1c2420;color:#86efac}
+.badge.attr{background:#2a2230;color:#d8b4fe}
+tr.detail td{background:#10101250;color:var(--muted);font-size:12px;white-space:normal;padding:6px 10px 8px}
+tr.detail .k{color:var(--dim);margin-right:6px}
+tr.detail .mono{color:var(--text)}
+tr.detail .item{display:block;line-height:1.8}
+.pill .eff{color:var(--muted);margin-left:5px}
 tr.agent td{background:#12121a}
 .src .req{color:var(--dim)}
 .empty{padding:32px;text-align:center;color:var(--dim)}
@@ -72,8 +91,11 @@ tr.agent td{background:#12121a}
 <div class="wrap">
   <div class="topbar"><h1><span id="dot" class="mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle class="ring" cx="16" cy="16" r="11" fill="none" stroke-width="3" stroke-dasharray="50 19" stroke-linecap="round" transform="rotate(-90 16 16)"/><circle class="core" cx="16" cy="16" r="5"/></svg></span>cclive<span class="tagline">Every Claude Code request, live as it lands in your transcripts</span><span id="conn" hidden>reconnecting…</span></h1><span id="summary" class="muted" style="font-size:12px"></span></div>
   <div id="budget" class="card" style="margin-top:0">
-    <div class="row"><div><span id="mtd" class="mono" style="font-size:22px;font-weight:600"></span><span id="of" class="muted"></span> <span class="muted">month to date</span></div><span id="reset" class="muted" style="font-size:12px"></span></div>
-    <div id="bar" class="bar" hidden><i></i></div>
+    <div class="limit">
+      <div><div id="spent"><span id="mtd" class="mono"></span><span id="of"></span> spent</div><div id="reset" class="muted"></div></div>
+      <div id="bar" class="bar" hidden><i></i></div>
+      <div id="pct" class="muted" hidden></div>
+    </div>
     <div class="dim" style="font-size:11.5px;margin-top:10px">Estimate at list price from local transcripts. Your invoice may differ. <span id="prices"></span></div>
     <div id="unlogged" class="dim" style="font-size:11.5px;margin-top:4px" hidden></div>
   </div>
@@ -90,6 +112,7 @@ tr.agent td{background:#12121a}
   <div class="card" style="margin-top:12px;padding:0 0 4px">
     <div class="row" style="padding:10px 10px 6px"><span class="muted" style="font-size:12px">Requests</span><button id="export" class="chip">Export CSV</button></div>
     <div id="table"></div>
+    <div id="pager" class="row" hidden></div>
   </div>
 </div>
 <script src="/chart.js"></script>
@@ -97,33 +120,59 @@ tr.agent td{background:#12121a}
 const MODEL_COLORS = { fable: '#d97757', opus: '#60a5fa', sonnet: '#34d399', haiku: '#fde047' };
 const PALETTE = ['#d97757', '#60a5fa', '#34d399', '#fde047', '#f472b6', '#fb923c', '#a3e635', '#38bdf8'];
 const DAY = 86400e3;
-/** Chip label → id used in the CSV file name. */
 const RANGES = { '1d': '1d', '7d': '7d', '30d': '30d', 'MTD': 'mtd', 'Last month': 'lastmonth' };
+const PAGE_SIZES = [50, 100, 250];
 const usd = v => v < 0.01 ? '$' + v.toFixed(4) : v < 1 ? '$' + v.toFixed(3) : '$' + v.toFixed(2);
 const tok = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
 const tm = ts => new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-/** "claude-fable-5-1" → {short: "Fable 5.1", color}. Date suffixes are dropped. */
 function modelInfo(id) {
-  const parts = id.replace(/^claude-/, '').replace(/-\d{8}$/, '').split('-');
+  const parts = id.replace(/^claude-/, '').replace(/\[1m\]$/, '').replace(/-\d{8}$/, '').split('-');
   const name = parts[0];
   const short = name[0].toUpperCase() + name.slice(1) + (parts.length > 1 ? ' ' + parts.slice(1).join('.') : '');
   return { short, color: MODEL_COLORS[name] || '#8b8b93' };
 }
-function modelPill(id) {
+function modelPill(id, effort = null) {
   const { short, color } = modelInfo(id);
-  return `<span class="pill"><i style="background:${color}"></i>${esc(short)}</span>`;
+  return `<span class="pill"><i style="background:${color}"></i>${esc(short)}${effort ? `<span class="eff" title="reasoning effort">· ${esc(effort)}</span>` : ''}</span>`;
+}
+
+function requestDetail(row) {
+  const names = row.tools || [];
+  const tools = names.filter(t => !t.startsWith('mcp__'));
+  const mcp = names.filter(t => t.startsWith('mcp__')).map(t => t.replace(/^mcp__/, '').replace('__', ' › '));
+  const skill = row.attribution?.startsWith('skill: ') ? row.attribution.slice(7) : null;
+  const server = row.attribution?.startsWith('mcp: ') ? row.attribution.slice(5) : null;
+  return { tools, mcp, skill, server, any: tools.length + mcp.length > 0 || !!skill };
+}
+
+/** Counts only; the MCP server chip carries its name because that is the only thing there is to show. */
+function detailBadges(d) {
+  return (d.tools.length ? `<span class="badge tool">Tools ${d.tools.length}</span>` : '')
+    + (d.mcp.length ? `<span class="badge tool">MCP ${d.mcp.length}</span>` : '')
+    + (d.skill ? `<span class="badge attr">Skill 1</span>` : '')
+    + (d.server ? `<span class="badge attr">via ${esc(d.server)}</span>` : '');
+}
+
+function detailRowHTML(row, d, depth) {
+  const counted = list => Object.entries(list.reduce((m, t) => (m[t] = (m[t] || 0) + 1, m), {}))
+    .map(([t, n]) => `<span class="mono">${esc(t)}</span>${n > 1 ? ` ×${n}` : ''}`).join(', ');
+  const items = [];
+  if (d.tools.length) items.push(`<span class="item"><span class="k">Tools</span>${counted(d.tools)}</span>`);
+  if (d.mcp.length) items.push(`<span class="item"><span class="k">MCP</span>${counted(d.mcp)}</span>`);
+  if (d.skill) items.push(`<span class="item"><span class="k">Skill</span><span class="mono">${esc(d.skill)}</span></span>`);
+  return `<tr class="child detail"><td></td><td colspan="7" style="padding-left:${depth * 18 + 30}px">${items.join('')}</td></tr>`;
 }
 
 const state = {
   rows: new Map(), sessions: [], top: [], childrenOf: new Map(), expanded: new Set(), budget: null, priceSource: '', unlogged: 0,
   range: '7d', session: new URLSearchParams(location.search).get('session') || null, groupBy: 'model', metric: 'spend',
-  /** Rows matching the chip and session filter, flat, newest first. */
+  pageSize: 50, page: 0,
   visible: [],
 };
 
-/** [start, end) of the selected chip in epoch ms; MTD and Last month sit on UTC month boundaries like the budget card. */
+/** [start, end); MTD and Last month sit on UTC month boundaries like the budget card. */
 function rangeWindow(now = Date.now()) {
   const d = new Date(now);
   const monthStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
@@ -141,7 +190,6 @@ function sessionLabel(id) {
   return s ? s.label : id;
 }
 
-/** Every nested subagent request under `row`, plus the distinct agents that made them. */
 function countSubs(row, agents = new Set()) {
   const reqs = (state.childrenOf.get(row.messageId) || []).reduce((n, c) => {
     agents.add(c.agentId);
@@ -156,7 +204,7 @@ function badgeTitle(row, flag) {
   return ` title="pre ${tok(c.preTokens)} · post ${tok(c.postTokens)} · dropped so far ${tok(c.cumulativeDroppedTokens)}"`;
 }
 
-/** Fold a newest-first list of rows into display nodes: main rows stay as they are, subagent rows collapse into one group per agent at the position of its newest request. */
+/** Subagent rows collapse into one group per agent at the position of its newest request. */
 function groupAgents(rows) {
   const nodes = [], byAgent = new Map();
   for (const r of rows) {
@@ -186,7 +234,6 @@ const numCells = (r, thinking, cache5m, cache1h) =>
   + `<td class="num" title="5m ${tok(cache5m)} · 1h ${tok(cache1h)}">${tok(cache5m + cache1h)}</td>`
   + `<td class="num">${usd(r.estimate)}</td>`;
 
-/** One row per subagent: its label, short id and request count, with the tokens and cost of every request it made. Expands to those requests. */
 function groupHTML(g, depth) {
   const key = 'agent:' + g.agentId;
   const open = state.expanded.has(key);
@@ -196,7 +243,7 @@ function groupHTML(g, depth) {
     + `<span class="badge">${g.rows.length} Request${g.rows.length === 1 ? '' : 's'}</span>`;
   let html = `<tr class="parent agent ${depth ? 'child' : ''}" data-id="${esc(key)}" title="agent ${esc(g.agentId)}">`
     + `<td class="mono dim">${tm(g.timestamp)}</td><td>${srcHTML(depth, chevHTML(open, true), g.sourceLabel)}${badges}</td>`
-    + `<td>${models.size === 1 ? modelPill(g.rows[0].model) : `<span class="dim">${models.size} models</span>`}</td>`
+    + `<td>${models.size === 1 ? modelPill(g.rows[0].model, new Set(g.rows.map(r => r.effort)).size === 1 ? g.rows[0].effort : null) : `<span class="dim">${models.size} models</span>`}</td>`
     + numCells(total, sumOf(g.rows, r => r.thinking), sumOf(g.rows, r => r.cacheWrite5m), sumOf(g.rows, r => r.cacheWrite1h)) + '</tr>';
   if (open) for (const r of g.rows) html += rowHTML(r, depth + 1, true);
   return html;
@@ -207,16 +254,20 @@ function rowHTML(row, depth, inGroup = false) {
   const children = groupAgents(state.childrenOf.get(row.messageId) || []);
   const open = state.expanded.has(row.messageId);
   const subs = countSubs(row);
-  const chev = chevHTML(open, children.length);
+  const detail = requestDetail(row);
+  const expandable = children.length > 0 || detail.any;
+  const chev = chevHTML(open, expandable);
   const src = inGroup
     ? `<span class="src" style="padding-left:${depth * 18}px">${chev}<span class="req">request</span></span>`
     : srcHTML(depth, chev, row.sourceLabel);
   const badges = row.flags.map(f => `<span class="badge ${f}"${badgeTitle(row, f)}>${f}</span>`).join('')
+    + detailBadges(detail)
     + (subs.reqs ? `<span class="badge">${subs.agents} Sub-Agent${subs.agents === 1 ? '' : 's'} - ${subs.reqs} Request${subs.reqs === 1 ? '' : 's'}</span>` : '');
   const tip = `${row.messageId} · ${row.requestId}${row.agentId ? ' · agent ' + row.agentId : ''}`;
-  let html = `<tr class="${children.length ? 'parent' : ''} ${depth ? 'child' : ''}" data-id="${esc(row.messageId)}" title="${esc(tip)}">`
-    + `<td class="mono dim">${tm(row.timestamp)}</td><td>${src}${badges}</td><td>${modelPill(row.model)}</td>`
+  let html = `<tr class="${expandable ? 'parent' : ''} ${depth ? 'child' : ''}" data-id="${esc(row.messageId)}" title="${esc(tip)}">`
+    + `<td class="mono dim">${tm(row.timestamp)}</td><td>${src}${badges}</td><td>${modelPill(row.model, row.effort)}</td>`
     + numCells(row, row.thinking, row.cacheWrite5m, row.cacheWrite1h) + '</tr>';
+  if (open && detail.any) html += detailRowHTML(row, detail, depth);
   if (open) for (const c of children) html += rowHTML(c, depth + 1);
   return html;
 }
@@ -226,7 +277,6 @@ function renderChips() {
     .map(k => `<button class="chip ${state.range === k ? 'on' : ''}" data-range="${k}">${k}</button>`).join('');
 }
 
-/** Newest first, green dot on the newest only; the current selection is kept across snapshot reloads. */
 function renderSessions() {
   const sel = document.getElementById('session');
   sel.innerHTML = '<option value="">All sessions</option>' + state.sessions
@@ -234,7 +284,6 @@ function renderSessions() {
   sel.value = state.session || '';
 }
 
-/** Estimate and request count for the range; Main thread plus Subagents is Total. */
 function renderTiles(rows) {
   const main = rows.filter(r => r.sourceType === 'main');
   const subs = rows.filter(r => r.sourceType === 'subagent');
@@ -252,8 +301,16 @@ function renderTiles(rows) {
       + cell('Cache write', sum(part, r => r.cacheWrite5m + r.cacheWrite1h), 'Prompt tokens written to the cache, at a premium price.')
       + `</div></div>`;
   document.getElementById('tiles').innerHTML =
-    tile('Total estimate', rows, unpriced ? ` · <span class="warn">${n(unpriced)} unpriced</span>` : '')
+    tile('Total estimate', rows, (unpriced ? ` · <span class="warn">${n(unpriced)} unpriced</span>` : '') + sessionCostNote())
     + tile('Main thread', main) + tile('Subagents', subs);
+}
+
+function sessionCostNote() {
+  const s = state.session && state.sessions.find(s => s.sessionId === state.session);
+  if (!s || s.costTotal === null) return '';
+  const parts = Object.entries(s.costByModel).sort((a, b) => b[1] - a[1]).map(([m, c]) => `${esc(modelInfo(m).short)} ${usd(c)}`);
+  if (!parts.length) parts.push(usd(s.costTotal));
+  return `<br><span title="Per model, as Claude Code itself counted this session in its cost-state record. Covers the whole session, including requests the transcript never logged.">${parts.join(' · ')}</span>`;
 }
 
 const HOURLY = { hour: '2-digit', minute: '2-digit', hour12: false };
@@ -277,7 +334,7 @@ function colorFor(key, i, sample) {
 }
 
 let chart = null;
-/** Cumulative stacked area: hour buckets when the window spans two days or less, else day buckets, in local time. */
+/** Hour buckets when the window spans two days or less, else day buckets, in local time. */
 function renderChart(rows) {
   const [a, b] = rangeWindow();
   const end = Math.min(b, Date.now());
@@ -330,7 +387,6 @@ function renderChart(rows) {
   }
 }
 
-/** ISO 8601 in local time with the offset, e.g. 2026-09-20T13:59:00+02:00. */
 function isoLocal(ts) {
   const d = new Date(ts), p = n => String(Math.abs(n)).padStart(2, '0'), off = -d.getTimezoneOffset();
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
@@ -338,10 +394,9 @@ function isoLocal(ts) {
 }
 const csvCell = v => /[",\r\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
 
-/** The filtered table, flat (subagent rows included whether or not their chevron is open), built in the browser. */
 function exportCsv() {
-  const rows = [['Time', 'Source', 'Model', 'Input', 'Output', 'Cache read', 'Cache write', 'Cost', 'Session', 'Flags']].concat(state.visible.map(r => [
-    isoLocal(r.timestamp), r.sourceLabel, r.model, r.input, r.output, r.cacheRead, r.cacheWrite5m + r.cacheWrite1h,
+  const rows = [['Time', 'Source', 'Model', 'Effort', 'Tools', 'Attribution', 'Input', 'Output', 'Cache read', 'Cache write', 'Cost', 'Session', 'Flags']].concat(state.visible.map(r => [
+    isoLocal(r.timestamp), r.sourceLabel, r.model, r.effort || '', (r.tools || []).join(' '), r.attribution || '', r.input, r.output, r.cacheRead, r.cacheWrite5m + r.cacheWrite1h,
     r.estimate.toFixed(6), sessionLabel(r.sessionId), r.flags.join(' '),
   ]));
   const blob = new Blob([rows.map(cells => cells.map(csvCell).join(',')).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
@@ -352,8 +407,24 @@ function exportCsv() {
   URL.revokeObjectURL(a.href);
 }
 
+function pagerHTML(total, pages) {
+  const from = total ? state.page * state.pageSize + 1 : 0, to = Math.min(total, (state.page + 1) * state.pageSize);
+  const opts = PAGE_SIZES.map(n => `<option value="${n}" ${n === state.pageSize ? 'selected' : ''}>${n}</option>`).join('');
+  return `<div class="ctl">Rows <select id="rows" title="Top-level rows per page">${opts}</select><span>Showing ${from}–${to} of ${total}</span></div>`
+    + `<div class="ctl"><button class="chip" data-page="-1" ${state.page === 0 ? 'disabled' : ''}>Prev</button>`
+    + `<span class="mono">${state.page + 1} / ${pages}</span>`
+    + `<button class="chip" data-page="1" ${state.page >= pages - 1 ? 'disabled' : ''}>Next</button></div>`;
+}
+
 function render() {
-  const body = groupAgents(state.top).map(r => rowHTML(r, 0)).join('') || '<tr><td colspan="8" class="empty">No requests in range</td></tr>';
+  const groups = groupAgents(state.top);
+  const pages = Math.max(1, Math.ceil(groups.length / state.pageSize));
+  state.page = Math.min(state.page, pages - 1);
+  const slice = groups.slice(state.page * state.pageSize, (state.page + 1) * state.pageSize);
+  const body = slice.map(r => rowHTML(r, 0)).join('') || '<tr><td colspan="8" class="empty">No requests in range</td></tr>';
+  const pager = document.getElementById('pager');
+  pager.hidden = groups.length <= PAGE_SIZES[0];
+  pager.innerHTML = pagerHTML(groups.length, pages);
   document.getElementById('table').innerHTML = '<table><thead><tr><th>Time</th><th>Source</th><th>Model</th>'
     + '<th class="num" title="Input tokens not served from the prompt cache. Same as &quot;input&quot; in Claude Code\'s /usage. Hover a cell for the whole prompt size.">Input</th>'
     + '<th class="num" title="Output tokens, thinking included.">Output</th>'
@@ -362,7 +433,7 @@ function render() {
     + `<tbody>${body}</tbody></table>`;
 }
 
-/** Filter by chip and session, rebuild the nesting, redraw tiles, chart and table. yagni: full re-sort per frame over ~11k rows. */
+/** yagni: full re-sort per frame over ~11k rows. */
 function index() {
   const [a, b] = rangeWindow();
   const rows = [...state.rows.values()]
@@ -385,19 +456,20 @@ function index() {
   render();
 }
 
-/** `rows` events and control changes coalesce into one redraw per animation frame. */
+/** Coalesce into one redraw per animation frame. */
 let frame = 0;
 function schedule() {
   frame ||= requestAnimationFrame(() => { frame = 0; index(); });
 }
 
-/** The 1st of next month at 00:00 UTC, as "1 Oct 2026". */
+/** Next 00:00 UTC on the 1st, shown in the viewer's zone so it matches the console reset line. */
 function nextReset() {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const at = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  return at.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
 }
 
-/** Month to date over every row held, ignoring the chip and session filters. Runs on every redraw so live rows move the bar. */
+/** Month to date over every held row, ignoring the chip and session filters. */
 function renderBudget() {
   const budget = state.budget;
   const now = new Date();
@@ -409,12 +481,16 @@ function renderBudget() {
   unlogged.hidden = !(state.unlogged > 0);
   unlogged.textContent = `Includes ${usd(state.unlogged)} that Claude Code counted for finished sessions but never wrote as requests: aborted and retried streams, sidecar calls, compaction.`;
   document.getElementById('of').textContent = budget ? ` of ${usd(budget)}` : '';
-  document.getElementById('reset').textContent = budget ? `Resets ${nextReset()}` : 'Set a budget with --budget';
+  document.getElementById('reset').textContent = `${budget ? 'Monthly budget' : 'This month'} · Resets ${nextReset()}${budget ? '' : ' · Set a budget with --budget'}`;
   const bar = document.getElementById('bar');
-  bar.hidden = !budget;
+  const pct = document.getElementById('pct');
+  bar.hidden = pct.hidden = !budget;
   if (budget) {
-    bar.firstElementChild.style.width = `${Math.min(100, mtd / budget * 100)}%`;
-    bar.classList.toggle('over', mtd >= budget);
+    const share = mtd / budget;
+    bar.firstElementChild.style.width = `${Math.min(100, share * 100)}%`;
+    bar.classList.toggle('over', share >= 1);
+    pct.classList.toggle('over', share >= 1);
+    pct.textContent = `${Math.round(share * 100)}% used`;
   }
   document.getElementById('prices').textContent = state.priceSource;
 }
@@ -435,7 +511,6 @@ function upsert(rows) {
   schedule();
 }
 
-/** The selected session rides the URL as `?session=<id>` so a bookmark reopens the same view. */
 function setSession(id) {
   state.session = id;
   const url = new URL(location);
@@ -454,9 +529,23 @@ document.getElementById('chips').addEventListener('click', e => {
   const chip = e.target.closest('[data-range]');
   if (!chip) return;
   state.range = chip.dataset.range;
+  state.page = 0;
   schedule();
 });
-document.getElementById('session').addEventListener('change', e => { setSession(e.target.value || null); schedule(); });
+document.getElementById('session').addEventListener('change', e => { setSession(e.target.value || null); state.page = 0; schedule(); });
+document.getElementById('pager').addEventListener('click', e => {
+  const b = e.target.closest('[data-page]');
+  if (!b || b.disabled) return;
+  state.page += Number(b.dataset.page);
+  render();
+  document.getElementById('table').scrollIntoView({ block: 'start' });
+});
+document.getElementById('pager').addEventListener('change', e => {
+  if (e.target.id !== 'rows') return;
+  state.pageSize = Number(e.target.value);
+  state.page = 0;
+  render();
+});
 document.getElementById('groupby').addEventListener('change', e => { state.groupBy = e.target.value; schedule(); });
 document.getElementById('metric').addEventListener('change', e => { state.metric = e.target.value; schedule(); });
 document.getElementById('export').addEventListener('click', exportCsv);
@@ -466,7 +555,6 @@ function setLive(on) {
   document.getElementById('conn').hidden = on;
 }
 
-/** Every hello (first connect, reconnect, server restart) refetches the snapshot; the boot token sits on the dot's tooltip. */
 function connect() {
   const es = new EventSource('/api/events');
   es.addEventListener('hello', e => {

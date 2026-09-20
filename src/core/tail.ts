@@ -7,7 +7,6 @@ interface TailState {
   /** Bytes consumed so far. The unterminated tail of the last read is kept in `pending`, not re-read. */
   offset: number;
   ino: number;
-  /** mtime from the last stat, epoch milliseconds. */
   mtimeMs: number;
   pending: Buffer[];
   busy: boolean;

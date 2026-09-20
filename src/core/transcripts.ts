@@ -29,7 +29,6 @@ export function transcriptIds(rel: string): { project: string; sessionId: string
   return { project, sessionId: second.endsWith('.jsonl') ? second.slice(0, -'.jsonl'.length) : second };
 }
 
-/** Every *.jsonl under the roots that exist, with mtime at or after `since`, as root plus relative path. */
 export async function listTranscripts(roots: string[], since: number): Promise<Array<{ root: string; rel: string }>> {
   const files: Array<{ root: string; rel: string }> = [];
   for (const root of roots) {

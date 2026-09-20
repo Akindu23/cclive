@@ -52,7 +52,7 @@ describe('snapshot from the synthetic fixture', () => {
 
     expect(rows.get('msg_fast_opus')).toMatchObject({
       requestId: 'req_fast', agentId: null, parentMessageId: null,
-      timestamp: Date.parse('2026-09-15T10:00:01.000Z'), sourceType: 'main', sourceLabel: 'main', model: 'claude-opus-5',
+      timestamp: Date.parse('2026-09-15T10:00:01.000Z'), sourceType: 'main', sourceLabel: 'main: AI title 1', model: 'claude-opus-5',
       input: 1000, cacheRead: 2000, cacheWrite5m: 500, cacheWrite1h: 0, output: 100,
     });
   });
@@ -151,15 +151,15 @@ describe('cost-state floor', () => {
     const store = new RequestStore(shippedPrices());
     store.feed(request('a1', 'a', '2026-09-10T00:00:00Z', 100_000)); // Sonnet 5 output at $10/M: 1.00
     store.feed(request('b1', 'b', '2026-09-10T00:00:00Z', 100_000));
-    expect(store.unlogged(SEP)).toBe(0); // no cost-state yet
+    expect(store.unlogged(SEP)).toBe(0);
     store.feed(costState('a', 1.25));
     store.feed(costState('b', 0.5)); // rows already exceed it
     expect(store.unlogged(SEP)).toBeCloseTo(0.25, 10);
     expect(store.takeCostStateChanged()).toBe(true);
     expect(store.takeCostStateChanged()).toBe(false);
-    store.feed(costState('a', 1.25)); // repeated, unchanged
+    store.feed(costState('a', 1.25));
     expect(store.takeCostStateChanged()).toBe(false);
-    store.feed(costState('a', 1.75)); // the last record wins
+    store.feed(costState('a', 1.75));
     expect(store.unlogged(SEP)).toBeCloseTo(0.75, 10);
     expect(store.takeCostStateChanged()).toBe(true);
   });
@@ -212,6 +212,33 @@ describe('subagent linkage from the two-level spawn fixture', () => {
     expect(rows.get('msg_sub_b1')).toMatchObject({ sourceType: 'subagent', agentId: 'b2', sourceLabel: 'Explore: nested scan' });
     expect(rows.get('msg_sub_c1')).toMatchObject({ sourceType: 'subagent', agentId: 'c3', sourceLabel: 'general-purpose: no meta task' }); // no meta file
     expect(rows.get('msg_spawn_a')).toMatchObject({ sourceType: 'main', agentId: null, sourceLabel: 'main' });
+  });
+
+  it('names main rows `main: <name>` from the agent name, else the session title, and relabels rows that came first', () => {
+    const store = new RequestStore(shippedPrices());
+    const row = (id: string, sessionId: string) => JSON.stringify({
+      type: 'assistant', uuid: id, requestId: 'req_' + id, sessionId, timestamp: '2026-09-15T10:00:00.000Z',
+      message: { id, model: 'claude-opus-5', stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 }, content: [] },
+    });
+    expect(store.feed(row('m1', 's1'))[0]?.sourceLabel).toBe('main');
+    expect(store.feed(JSON.stringify({ type: 'ai-title', sessionId: 's1', aiTitle: 'Fix the budget bar' })).map((r) => r.sourceLabel)).toEqual(['main: Fix the budget bar']);
+    expect(store.feed(JSON.stringify({ type: 'agent-name', sessionId: 's1', agentName: 'budget bar' })).map((r) => r.sourceLabel)).toEqual(['main: budget bar']);
+    expect(store.feed(JSON.stringify({ type: 'agent-name', sessionId: 's1', agentName: 'budget bar' }))).toEqual([]);
+    expect(store.feed(row('m2', 's1'))[0]?.sourceLabel).toBe('main: budget bar');
+    expect(store.feed(row('m3', 's2'))[0]?.sourceLabel).toBe('main');
+  });
+
+  it('carries effort, the tools called and the skill or MCP attribution on each row, and the per-model cost-state split on the session', () => {
+    const store = new RequestStore(shippedPrices());
+    const base = { type: 'assistant', sessionId: 's1', timestamp: '2026-09-15T10:00:00.000Z', requestId: 'req_1' };
+    const msg = (id: string, content: unknown[]) => ({ id, model: 'claude-opus-5', stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 }, content });
+    const [a] = store.feed(JSON.stringify({ ...base, uuid: 'a', effort: 'medium', attributionSkill: 'council',
+      message: msg('m1', [{ type: 'tool_use', id: 't1', name: 'Bash', input: {} }, { type: 'tool_use', id: 't2', name: 'mcp__ifs-headless__read_record', input: {} }, { type: 'text', text: 'x' }]) }));
+    expect(a).toMatchObject({ effort: 'medium', tools: ['Bash', 'mcp__ifs-headless__read_record'], attribution: 'skill: council' });
+    const [b] = store.feed(JSON.stringify({ ...base, uuid: 'b', requestId: 'req_2', attributionMcpServer: 'ifs-headless', message: msg('m2', [{ type: 'text', text: 'x' }]) }));
+    expect(b).toMatchObject({ effort: null, tools: [], attribution: 'mcp: ifs-headless' });
+    store.feed(JSON.stringify({ type: 'cost-state', sessionId: 's1', totalCostUSD: 12.5, startTime: 1, modelUsage: { 'claude-opus-5[1m]': { costUSD: 12 }, 'claude-haiku-4-5-20251001': { costUSD: 0.5 }, broken: { costUSD: 'x' } } }));
+    expect(store.sessions()[0]).toMatchObject({ sessionId: 's1', costTotal: 12.5, costByModel: { 'claude-opus-5[1m]': 12, 'claude-haiku-4-5-20251001': 0.5 } });
   });
 
   it('does not flag a subagent tool_use turn as aborted when its stop_reason is null', async () => {

@@ -6,14 +6,12 @@ import { LITELLM_URL, convertLiteLLM, formatPriceDate, layerPrices, shippedPrice
 const TIMEOUT_MS = 5000;
 const MAX_BYTES = 10 * 1024 * 1024;
 
-/** A price table and the label that names where it came from. */
 export interface PriceSource {
   table: PriceTable;
   label: string;
 }
 
 export interface PriceSetup {
-  /** The best table available without the network. */
   local: PriceSource;
   /** Resolves once the LiteLLM download settles, never rejects. `null` when offline. */
   refresh: Promise<PriceSource> | null;
@@ -21,7 +19,6 @@ export interface PriceSetup {
 
 export interface PriceOptions {
   offline: boolean;
-  /** `--pricing <file>`: per-model override, first in precedence. */
   pricingFile?: string;
   url?: string;
   dir?: string;
@@ -99,7 +96,6 @@ function readCache(path: string): PriceCache | null {
   }
 }
 
-/** Throws with a message fit for stderr when the file is unreadable or not a price table. */
 function readUserTable(path: string): UserTable {
   let t: unknown;
   try {

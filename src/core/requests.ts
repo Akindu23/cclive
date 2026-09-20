@@ -23,11 +23,14 @@ interface AssistantRecord {
   timestamp: string;
   requestId?: string | null;
   agentId?: string;
+  effort?: string;
+  attributionSkill?: string;
+  attributionMcpServer?: string;
   message: {
     id: string;
     model: string;
     stop_reason: string | null;
-    content?: Array<{ type: string } | AgentToolUse>;
+    content?: Array<{ type: string; name?: string } | AgentToolUse>;
     usage: {
       input_tokens: number;
       output_tokens: number;
@@ -61,13 +64,15 @@ interface CostStateRecord {
   sessionId: string;
   totalCostUSD?: number;
   startTime?: number;
+  modelUsage?: Record<string, { costUSD?: number }>;
 }
 
 interface TitleRecord {
-  type: 'ai-title' | 'custom-title';
+  type: 'ai-title' | 'custom-title' | 'agent-name';
   sessionId: string;
   aiTitle?: string;
   customTitle?: string;
+  agentName?: string;
 }
 
 interface Entry {
@@ -84,13 +89,13 @@ interface SessionState {
   startTime: number;
   aiTitle: string | null;
   customTitle: string | null;
-  /** `totalCostUSD` from the session's last `cost-state` record, null until one is seen. */
+  agentName: string | null;
   costTotal: number | null;
+  costByModel: Record<string, number>;
 }
 
-const EMPTY_SESSION: SessionState = { project: '', cwdName: null, lastWrite: 0, startTime: Infinity, aiTitle: null, customTitle: null, costTotal: null };
+const EMPTY_SESSION: SessionState = { project: '', cwdName: null, lastWrite: 0, startTime: Infinity, aiTitle: null, customTitle: null, agentName: null, costTotal: null, costByModel: {} };
 
-/** Holds every request seen, keyed by message id, and prices it. Feed lines, read rows. */
 export class RequestStore {
   private readonly entries = new Map<string, Entry>();
   /** uuid of an assistant line holding an Agent tool_use → its message id (the spawning request). */
@@ -104,7 +109,7 @@ export class RequestStore {
   /** session id → counts from a `compact_boundary` not yet attached to a main-thread request. */
   private readonly pendingCompaction = new Map<string, Compaction>();
   private readonly sessionStates = new Map<string, SessionState>();
-  /** One shared string per model id, so ten thousand rows do not hold ten thousand copies. */
+  /** Interned strings so ten thousand rows do not hold ten thousand copies. */
   private readonly models = new Map<string, string>();
   skippedLines = 0;
   private costStateChanged = false;
@@ -118,7 +123,6 @@ export class RequestStore {
     return changed;
   }
 
-  /** Swap the price table and re-estimate every row, refreshing its unpriced flag. */
   reprice(prices: PriceTable): void {
     this.prices = prices;
     for (const { row } of this.entries.values()) {
@@ -129,13 +133,11 @@ export class RequestStore {
     }
   }
 
-  /** Label an agent from its sibling meta file. Returns rows whose label changed. */
   labelAgent(agentId: string, label: string): RequestRow[] {
     this.metaLabelByAgent.set(agentId, label);
     return this.relabel(agentId);
   }
 
-  /** Note a write to one of a session's files. `project` is the basename of the folder under the root. */
   touchSession(sessionId: string, project: string, writtenAt: number): void {
     const state = this.session(sessionId);
     state.project = project;
@@ -154,7 +156,6 @@ export class RequestStore {
     return state;
   }
 
-  /** Parse one transcript line. Returns the rows it created or changed. */
   feed(line: string): RequestRow[] {
     let rec: { type?: unknown };
     try {
@@ -170,7 +171,7 @@ export class RequestStore {
     this.noteStart(rec as { sessionId?: unknown; timestamp?: unknown; cwd?: unknown });
     if (rec.type === 'user') return this.feedLink(rec as LinkRecord);
     if (rec.type === 'system') this.feedSystem(rec as SystemRecord);
-    if (rec.type === 'ai-title' || rec.type === 'custom-title') this.feedTitle(rec as TitleRecord);
+    if (rec.type === 'ai-title' || rec.type === 'custom-title' || rec.type === 'agent-name') return this.feedTitle(rec as TitleRecord);
     if (rec.type === 'cost-state') this.feedCostState(rec as CostStateRecord);
     if (rec.type !== 'assistant') return [];
     return this.feedAssistant(rec as AssistantRecord);
@@ -202,17 +203,24 @@ export class RequestStore {
     if (typeof rec.sessionId !== 'string' || typeof rec.totalCostUSD !== 'number' || !Number.isFinite(rec.totalCostUSD)) return;
     const state = this.session(rec.sessionId);
     if (typeof rec.startTime === 'number' && rec.startTime < state.startTime) state.startTime = rec.startTime;
+    const byModel: Record<string, number> = {};
+    for (const [model, u] of Object.entries(rec.modelUsage ?? {})) {
+      if (typeof u?.costUSD === 'number' && Number.isFinite(u.costUSD)) byModel[model] = u.costUSD;
+    }
+    state.costByModel = byModel;
     if (state.costTotal === rec.totalCostUSD) return;
     state.costTotal = rec.totalCostUSD;
     this.costStateChanged = true;
   }
 
-  /** Title records repeat many times per file; the last one wins. */
-  private feedTitle(rec: TitleRecord): void {
-    if (typeof rec.sessionId !== 'string') return;
+  /** Title and name records repeat many times per file; the last one wins. */
+  private feedTitle(rec: TitleRecord): RequestRow[] {
+    if (typeof rec.sessionId !== 'string') return [];
     const state = this.session(rec.sessionId);
     if (typeof rec.customTitle === 'string') state.customTitle = rec.customTitle;
     if (typeof rec.aiTitle === 'string') state.aiTitle = rec.aiTitle;
+    if (typeof rec.agentName === 'string') state.agentName = rec.agentName;
+    return this.relabelMain(rec.sessionId);
   }
 
   private feedLink(rec: LinkRecord): RequestRow[] {
@@ -239,7 +247,7 @@ export class RequestStore {
     for (const { row } of this.entries.values()) {
       if (row.agentId !== agentId) continue;
       const parentMessageId = this.parentByAgent.get(agentId) ?? null;
-      const sourceLabel = this.labelFor(agentId);
+      const sourceLabel = this.labelFor(agentId, row.sessionId);
       if (row.parentMessageId === parentMessageId && row.sourceLabel === sourceLabel) continue;
       row.parentMessageId = parentMessageId;
       row.sourceLabel = sourceLabel;
@@ -248,9 +256,26 @@ export class RequestStore {
     return changed;
   }
 
-  private labelFor(agentId: string | null): string {
-    if (agentId === null) return 'main';
+  /** Main rows are `main: <name>` once the session has an agent name or title, mirroring `<type>: <description>` on subagents; `main` until then. */
+  private labelFor(agentId: string | null, sessionId: string): string {
+    if (agentId === null) {
+      const name = mainNameOf(this.sessionStates.get(sessionId));
+      return name ? `main: ${name}` : 'main';
+    }
     return this.metaLabelByAgent.get(agentId) ?? this.fallbackLabelByAgent.get(agentId) ?? 'subagent';
+  }
+
+  /** Names and titles usually land after the first rows, so earlier main rows have to be relabelled. */
+  private relabelMain(sessionId: string): RequestRow[] {
+    const changed: RequestRow[] = [];
+    for (const { row } of this.entries.values()) {
+      if (row.agentId !== null || row.sessionId !== sessionId) continue;
+      const sourceLabel = this.labelFor(null, sessionId);
+      if (row.sourceLabel === sourceLabel) continue;
+      row.sourceLabel = sourceLabel;
+      changed.push(row);
+    }
+    return changed;
   }
 
   private indexSpawner(rec: AssistantRecord): void {
@@ -299,6 +324,12 @@ export class RequestStore {
     if (!final) flags.push('aborted');
     if (!price) flags.push('unpriced');
 
+    const tools: string[] = [];
+    for (const b of msg.content ?? []) {
+      if (b.type === 'tool_use' && typeof b.name === 'string') tools.push(this.intern(b.name));
+    }
+    const attribution = typeof rec.attributionSkill === 'string' ? `skill: ${rec.attributionSkill}`
+      : typeof rec.attributionMcpServer === 'string' ? `mcp: ${rec.attributionMcpServer}` : null;
     const row: RequestRow = {
       messageId: msg.id,
       requestId: rec.requestId,
@@ -307,8 +338,11 @@ export class RequestStore {
       parentMessageId: agentId === null ? null : this.parentByAgent.get(agentId) ?? null,
       timestamp: Date.parse(rec.timestamp),
       sourceType: agentId === null ? 'main' : 'subagent',
-      sourceLabel: this.labelFor(agentId),
+      sourceLabel: this.labelFor(agentId, rec.sessionId),
       model: this.intern(msg.model),
+      effort: typeof rec.effort === 'string' ? this.intern(rec.effort) : null,
+      tools,
+      attribution: attribution && this.intern(attribution),
       speed,
       input: usage.input,
       cacheRead: usage.cacheRead,
@@ -331,7 +365,6 @@ export class RequestStore {
     return s;
   }
 
-  /** Every row, newest first. */
   rows(): RequestRow[] {
     return [...this.entries.values()].map((e) => e.row).sort((a, b) => b.timestamp - a.timestamp);
   }
@@ -359,13 +392,16 @@ export class RequestStore {
     return total;
   }
 
-  /** Every session seen, newest first by last write; only the first is `newest`. */
   sessions(): Session[] {
     return [...this.sessionStates.entries()]
-      .map(([sessionId, s]) => ({ sessionId, label: `${s.cwdName ?? s.project} · ${titleOf(s)}`, lastWrite: s.lastWrite, newest: false }))
+      .map(([sessionId, s]) => ({ sessionId, label: `${s.cwdName ?? s.project} · ${titleOf(s)}`, lastWrite: s.lastWrite, newest: false, costTotal: s.costTotal, costByModel: s.costByModel }))
       .sort((a, b) => b.lastWrite - a.lastWrite)
       .map((s, i) => (i === 0 ? { ...s, newest: true } : s));
   }
+}
+
+function mainNameOf(s: SessionState | undefined): string | null {
+  return s?.agentName || s?.customTitle || s?.aiTitle || null;
 }
 
 function titleOf(s: SessionState): string {
@@ -374,7 +410,7 @@ function titleOf(s: SessionState): string {
   return Number.isFinite(s.startTime) ? formatStartTime(s.startTime) : '';
 }
 
-/** Local time on the machine running cclive, e.g. "Sep 10, 2026, 9:00 AM". */
+/** Local time on the machine running cclive, not UTC. */
 export function formatStartTime(t: number): string {
   return new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }

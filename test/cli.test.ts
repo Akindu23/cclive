@@ -32,7 +32,6 @@ function runAsync(args: string[], home: string, extra: NodeJS.ProcessEnv) {
   });
 }
 
-/** A HOME whose two transcript roots hold the fixture's secondary tree. */
 function fixtureHome() {
   const now = new Date();
   const fixture = copyFixtureRoots(now);

@@ -58,7 +58,7 @@ export function lookupPrice(table: PriceTable, model: string): ModelPrice | unde
 
 type Usage = Pick<RequestRow, 'input' | 'output' | 'cacheRead' | 'cacheWrite5m' | 'cacheWrite1h' | 'speed'>;
 
-/** Estimate in USD. Output already includes thinking tokens. */
+/** Output already includes thinking tokens. */
 export function estimate(usage: Usage, price: ModelPrice): number {
   const p = usage.speed === 'fast' && price.fast ? price.fast : price;
   return (
@@ -73,7 +73,6 @@ export function estimate(usage: Usage, price: ModelPrice): number {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** "19 Sep 2026" from an ISO date string. */
 export function formatPriceDate(isoDate: string): string {
   const d = new Date(isoDate);
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;

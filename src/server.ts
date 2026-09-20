@@ -11,11 +11,10 @@ const HEARTBEAT_MS = 20_000;
 const SLOW_CLIENT_BYTES = 1024 * 1024;
 
 export type DashboardServer = Server & {
-  /** Push the reader's whole snapshot to every connected page, e.g. after a re-price. */
   broadcastSnapshot(): void;
 };
 
-/** HTTP over one reader: `/`, `/chart.js`, `/api/snapshot`, SSE `/api/events`. Watches the roots for the server's life; the first file event after 00:00 UTC runs the history sweep. `clock` exists for tests. */
+/** The first file event after 00:00 UTC runs the history sweep. `clock` exists for tests. */
 export function createServer(reader: Reader, page: string, chartJs: string, clock = () => new Date()): DashboardServer {
   const bootToken = randomUUID();
   let sweptDay = Math.floor(clock().getTime() / DAY_MS);
@@ -99,7 +98,7 @@ export function createServer(reader: Reader, page: string, chartJs: string, cloc
   return Object.assign(server, { broadcastSnapshot });
 }
 
-/** Bind `127.0.0.1:port`. With `strict` a busy port rejects; otherwise the next port is tried until one is free. */
+/** With `strict` a busy port rejects; otherwise the next port is tried until one is free. */
 export function listen(server: NetServer, port: number, strict: boolean): Promise<number> {
   return new Promise((resolve, reject) => {
     const tryPort = (p: number) => {
