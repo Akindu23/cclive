@@ -127,7 +127,7 @@ async function main(argv: string[]): Promise<number> {
   }
 
   process.stdout.write('Reading transcripts…\n');
-  await reader.readHistory();
+  const files = await reader.readHistory();
   const server = createServer(reader, page, __CCLIVE_CHART_JS__);
   prices.refresh?.then((fresh) => {
     reader.setPrices(fresh.table, fresh.label);
@@ -141,7 +141,8 @@ async function main(argv: string[]): Promise<number> {
     return 1;
   }
   const url = `http://127.0.0.1:${bound}`;
-  process.stdout.write(`${url}\n`);
+  const seconds = (performance.now() / 1000).toFixed(1);
+  process.stdout.write(`${url}  (${files} transcripts read in ${seconds} s)\n`);
   if (values.open) openBrowser(url);
   return new Promise(() => {}); // serve until killed
 }

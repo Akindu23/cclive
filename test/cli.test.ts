@@ -3,16 +3,17 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { copyFixtureRoots, touchAll } from './helpers.ts';
 import { buildSnapshot, shippedPrices } from '../src/core/index.ts';
 
-const CLI = new URL('../dist/cli.js', import.meta.url).pathname;
+const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
 const LITELLM = readFileSync(new URL('./fixtures/litellm.json', import.meta.url), 'utf8');
 
-/** Every run is offline with a throwaway config dir unless a test says otherwise, so no test touches the network or the real cache. */
+/** Every run is offline with a throwaway config dir unless a test says otherwise, so no test touches the network or the real cache. `USERPROFILE` is what `homedir()` reads on Windows. */
 function env(home?: string, extra: NodeJS.ProcessEnv = {}) {
-  return { ...process.env, HOME: home ?? process.env.HOME, XDG_CONFIG_HOME: mkdtempSync(join(tmpdir(), 'cclive-cfg-')), CCLIVE_OFFLINE: '1', ...extra };
+  return { ...process.env, HOME: home ?? process.env.HOME, USERPROFILE: home ?? process.env.USERPROFILE, XDG_CONFIG_HOME: mkdtempSync(join(tmpdir(), 'cclive-cfg-')), CCLIVE_OFFLINE: '1', ...extra };
 }
 
 function run(args: string[], home?: string, extra: NodeJS.ProcessEnv = {}) {
@@ -84,7 +85,7 @@ describe('cclive CLI (built bundle)', () => {
     expect(printed.rows.some((r: { messageId: string }) => r.messageId === 'msg_fast_opus')).toBe(true);
   });
 
-  it('--no-open --port 0 prints the URL, serves the page from the bundle and the snapshot --json prints', async () => {
+  it('--no-open --port 0 prints the URL with the startup read time, serves the page from the bundle and the snapshot --json prints', async () => {
     const now = new Date();
     const fixture = copyFixtureRoots(now);
     const home = join(fixture.dir, 'home');
@@ -98,12 +99,13 @@ describe('cclive CLI (built bundle)', () => {
       const url = await new Promise<string>((resolve, reject) => {
         child.stdout.on('data', (d) => {
           out += d;
-          const url = /^(http:\/\/127\.0\.0\.1:\d+)$/m.exec(out)?.[1];
+          const url = /^(http:\/\/127\.0\.0\.1:\d+)\b/m.exec(out)?.[1];
           if (url) resolve(url);
         });
         child.on('exit', (code) => reject(new Error(`exited ${code}: ${out}`)));
       });
       expect(out).toContain('Reading transcripts');
+      expect(out).toMatch(/^http:\/\/127\.0\.0\.1:\d+ {2}\(\d+ transcripts read in \d+\.\d s\)$/m);
       const page = await (await fetch(`${url}/`)).text();
       expect(page).toContain('<title>cclive</title>');
       expect(page).toContain("fetch('/api/snapshot')");
@@ -124,7 +126,7 @@ describe('cclive CLI (built bundle)', () => {
         let out = '';
         blocker.stdout.on('data', (d) => {
           out += d;
-          const port = /127\.0\.0\.1:(\d+)$/m.exec(out)?.[1];
+          const port = /127\.0\.0\.1:(\d+)\b/.exec(out)?.[1];
           if (port) resolve(port);
         });
       });

@@ -22,9 +22,11 @@ export class Reader {
     this.priceSource = priceSource;
   }
 
-  /** Read every transcript in the history window. */
-  async readHistory(now = new Date()): Promise<void> {
-    for (const { root, rel } of await listTranscripts(this.roots, historyWindowStart(now))) await this.reconcile(root, rel);
+  /** Read every transcript in the history window. Returns how many files were read. */
+  async readHistory(now = new Date()): Promise<number> {
+    const files = await listTranscripts(this.roots, historyWindowStart(now));
+    for (const { root, rel } of files) await this.reconcile(root, rel);
+    return files.length;
   }
 
   /** Read whatever `rel` under `root` has appended since last time. Returns the rows created or changed. */
